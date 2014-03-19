@@ -2569,6 +2569,22 @@ public class ArrayUtil {
 		}
 		return out;
 	}
+	public static final double[][] reshape2D(double[] in, int nx, int ny, boolean rowwise){
+		double[][] out = new double[nx][ny];
+		int i=0;
+		if(rowwise){
+			for(int x=0; x<nx; x++)  for(int y=0; y<ny; y++) {
+				out[x][y]=in[i];
+				i++;
+			}
+		}else{
+			for(int y=0; y<ny; y++) for(int x=0; x<nx; x++){
+				out[x][y]=in[i];
+				i++;
+			}
+		}
+		return out;
+	}
 	public static final float[][] reshape2D(float[] in, int nx, int ny, boolean rowwise){
 		float[][] out = new float[nx][ny];
 		int i=0;
@@ -3256,6 +3272,26 @@ public class ArrayUtil {
 			}
 		}
 
+		return out;
+	}
+	public static double[][] symMatrix(double[] v){
+		double[][] out = null;
+		int k=0;
+		if(v.length==4){
+			out = new double[2][2];
+			for(int i=0; i<2; i++)for(int j=i; j<2; j++){
+				out[i][j] = v[k];
+				if(i!=j){ out[j][i] = v[k]; }
+				k++;
+			}
+		}else if(v.length==6){
+			out = new double[3][3];
+			for(int i=0; i<3; i++)for(int j=i; j<3; j++){
+				out[i][j] = v[k];
+				if(i!=j){ out[j][i] = v[k]; } 
+				k++;
+			}
+		}
 		return out;
 	}
 	public static double[][] symMatrixDouble(float[] v){
