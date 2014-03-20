@@ -11,6 +11,7 @@ import org.ejml.data.Complex64F;
 import org.ejml.data.DenseMatrix64F;
 
 import edu.jhu.ece.iacl.utility.ArrayUtil;
+import edu.jhu.ece.iacl.utility.SortWithIndices;
 
 public class ImgMoment {
 	protected static Logger logger = LogManager.getLogger(ImgMoment.class.getName());
@@ -252,18 +253,16 @@ public class ImgMoment {
 		SymmetricQRAlgorithmDecomposition decompU = new SymmetricQRAlgorithmDecomposition(true);
 		decompU.decompose(U);
 		int numU = decompU.getNumberOfEigenvalues();
-		double[] evalsU = new double[3];
-		for(int i=0; i<numU; i++){ evalsU[i] = magsqr(decompU.getEigenvalue(i)); }
+		double[] evals = new double[nd];
+		for(int i=0; i<numU; i++){ evals[i] = magsqr(decompU.getEigenvalue(i)); }
 
-
-		int[] evalUinds = new int[3];
-		evals = ArrayUtil.sortWithInds(evalsU, evalUinds);
-
+		int[] evalUinds = SortWithIndices.getIndexArray(nd);
+		SortWithIndices.quicksort(evals, evalUinds);
+		
 		DenseMatrix64F Up  = permuteEvects(decompU, evalUinds);
 		evecs = Up.getData();
-		//    System.out.println("Up:");
-		//    Up.print();
-
+		logger.debug(" " + Up );
+		
 
 		/* Older code using differently shaped output */
 
@@ -277,31 +276,65 @@ public class ImgMoment {
 
 	}   
 
-   public static DenseMatrix64F permuteEvects(SymmetricQRAlgorithmDecomposition in, int[] permutation){
-      int N = in.getNumberOfEigenvalues();
-      if(N==0){ return null; }
+	public static DenseMatrix64F permuteEvects(SymmetricQRAlgorithmDecomposition in, int[] permutation){
+		int N = in.getNumberOfEigenvalues();
+		if(N==0){ return null; }
 
-      DenseMatrix64F out = new DenseMatrix64F(N,in.getEigenVector(0).numRows);
-      for(int i=0; i<out.numRows; i++){
-         for(int j=0; j<out.numCols; j++){
-            out.set(i,j,in.getEigenVector(permutation[out.numCols - j - 1]).get(i));
-         }
-      }
-      return out;
-   }
+		DenseMatrix64F out = new DenseMatrix64F(N,in.getEigenVector(0).numRows);
+		for(int i=0; i<N; i++){
+			DenseMatrix64F evec = in.getEigenVector(permutation[out.numCols - i - 1]);
+			logger.debug("\tevec: " + evec);
+			for(int j=0; j<out.numCols; j++){
+				out.set(i,j,evec.get(j));
+			}
+		}
+		return out;
+	}
 
-   public static DenseMatrix64F permuteEvects(SymmetricQRAlgorithmDecomposition in, int[] permutation,float[] evals){
-      int N = in.getNumberOfEigenvalues();
-      if(N==0){ return null; }
+	public static DenseMatrix64F permuteEvects(SymmetricQRAlgorithmDecomposition in, int[] permutation,float[] evals){
+		int N = in.getNumberOfEigenvalues();
+		if(N==0){ return null; }
 
-      DenseMatrix64F out = new DenseMatrix64F(N,in.getEigenVector(0).numRows);
-      for(int i=0; i<out.numRows; i++){
-         for(int j=0; j<out.numCols; j++){
-            out.set(i,j,in.getEigenVector(permutation[out.numCols - j - 1]).get(i)*evals[j]);
-         }
-      }
-      return out;
-   }
+		DenseMatrix64F out = new DenseMatrix64F(N,in.getEigenVector(0).numRows);
+		for(int i=0; i<N; i++){
+			DenseMatrix64F evec = in.getEigenVector(permutation[out.numCols - i - 1]);
+			logger.debug("\tevec: " + evec);
+			for(int j=0; j<out.numCols; j++){
+				out.set(i,j, evals[i]*evec.get(j) );
+			}
+		}
+		return out;
+	}
+	   
+//   public static DenseMatrix64F permuteEvects(SymmetricQRAlgorithmDecomposition in, int[] permutation){
+//      int N = in.getNumberOfEigenvalues();
+//      if(N==0){ return null; }
+//
+//      DenseMatrix64F out = new DenseMatrix64F(N,in.getEigenVector(0).numRows);
+//      for(int i=0; i<out.numRows; i++){
+//         for(int j=0; j<out.numCols; j++){
+//        	DenseMatrix64F evec = in.getEigenVector(permutation[out.numCols - j - 1]);
+//         	logger.debug("\tevec: " + evec);
+//            out.set(i,j,in.getEigenVector(permutation[out.numCols - j - 1]).get(i));
+//         }
+//      }
+//      return out;
+//   }
+//
+//   public static DenseMatrix64F permuteEvects(SymmetricQRAlgorithmDecomposition in, int[] permutation,float[] evals){
+//      int N = in.getNumberOfEigenvalues();
+//      if(N==0){ return null; }
+//
+//      DenseMatrix64F out = new DenseMatrix64F(N,in.getEigenVector(0).numRows);
+//      for(int i=0; i<out.numRows; i++){
+//         for(int j=0; j<out.numCols; j++){
+//        	DenseMatrix64F evec = in.getEigenVector(permutation[out.numCols - j - 1]);
+//        	logger.debug("\tevec: " + evec);
+//            out.set(i,j, evec.get(i)*evals[j]);
+//         }
+//      }
+//      return out;
+//   }
 
 	public static double magsqr(Complex64F v){
 		return (v.real*v.real + v.imaginary*v.imaginary);
