@@ -13,15 +13,16 @@ import org.ejml.ops.CommonOps;
 import edu.jhu.ece.iacl.utility.ArrayUtil;
 import net.imglib2.Dimensions;
 import net.imglib2.RealLocalizable;
-import net.imglib2.img.array.ArrayImg;
-import net.imglib2.type.numeric.real.FloatType;
 
 /**
- * 
+ * Abstract superclass for kernel transform methods,
+ * e.g. {@link ThinPlateSplineKernelTransform}.
+ *
+ *
  * @author John Bogovic
  *
  */
-public class KernelTransform {
+public abstract class KernelTransform {
 	
 	protected Dimensions dim;
    protected int ndims;
@@ -51,7 +52,10 @@ public class KernelTransform {
 	protected static Logger logger = LogManager.getLogger(KernelTransform.class.getName());
 	
 	public KernelTransform(){}
-	
+
+   /*
+    * Constructor
+    */
 	public KernelTransform(Dimensions dim){
 		logger.info("initializing");
 		
@@ -69,11 +73,21 @@ public class KernelTransform {
 		}
 		
 	}
+
+   /*
+    * Constructor with point matches 
+    */
 	public KernelTransform( Dimensions dim, Collection<RealLocalizable> srcPtsIn, Collection<RealLocalizable> tgtPtsIn ){
 		this(dim);
 		setLandmarks(srcPtsIn, tgtPtsIn);
 	}
 
+   /*
+    * Sets the source and target landmarks for this KernelTransform object
+    *
+    * @param sourcePts the collection of source points
+    * @param targetPts the collection of target/destination points
+    */
 	public void setLandmarks(Collection<RealLocalizable> sourcePts, Collection<RealLocalizable> targetPts){
 		if( sourcePts.size() != targetPts.size()){
 			logger.error("Source and target landmark lists must be the same size");
@@ -128,24 +142,7 @@ public class KernelTransform {
 			targetLandmarks.add(l);
 		}
 	}
-	
-	public double[] transformPoint(double[] pt){
 
-      double[] result = new double[ndims];
-      // affine part
-		for(int i=0; i<ndims; i++){
-			for(int j=0; j<ndims; j++){
-            result[i] += aMatrix[i][j] * pt[j];
-         }
-      }
-
-      // translational part
-      for(int i=0; i<ndims; i++){
-         result[i] += bVector[i] + pt[i];
-      }
-
-		return result;
-	}
 	
 	public DenseMatrix64F computeReflexiveG(){
 		CommonOps.fill(gMatrix, 0);
@@ -335,12 +332,57 @@ public class KernelTransform {
 		
 	}
 
+   /**
+    * Transforms the input point according to the affine part of 
+    * the thin plate spline stored by this object.  
+    *
+    * @param pt the point to be transformed
+    * @return the transformed point
+    */
+	public double[] transformPointAffine(double[] pt){
+
+      double[] result = new double[ndims];
+      // affine part
+		for(int i=0; i<ndims; i++){
+			for(int j=0; j<ndims; j++){
+            result[i] += aMatrix[i][j] * pt[j];
+         }
+      }
+
+      // translational part
+      for(int i=0; i<ndims; i++){
+         result[i] += bVector[i] + pt[i];
+      }
+
+		return result;
+	}
+
+   /**
+    * Transforms the input RealLocalizable according to the
+    * thin plate spline stored by this object.  
+    *
+    * @param pt the point to be transformed
+    * @return the transformed point
+    */
 	public double[] transformPoint(RealLocalizable loc){
 		
 		double[] pt 	 = new double[ndims];
 		loc.localize(pt);
 
+      return transformPoint(pt);
+   }
+
+   /**
+    * Transforms the input point according to the
+    * thin plate spline stored by this object.  
+    *
+    *
+    * @param pt the point to be transformed
+    * @return the transformed point
+    */
+	public double[] transformPoint(double[] pt){
 		double[] result = computeDeformationContribution( pt );
+
 
 		for (int i = 0; i < ndims; i++)
 			for (int j = 0; j < ndims; j++) {
@@ -351,26 +393,28 @@ public class KernelTransform {
 	}
 
 
-	public void computeG( double[] pt, DenseMatrix64F mtx){  }
+	public abstract void computeG( double[] pt, DenseMatrix64F mtx);
 
+
+   // TODO Make this somehow useful
 	public void Modified(){
 		
 	}
 
-	public static void main(String[] args) {
+	//public static void main(String[] args) {
 
-		FloatType t = new FloatType(0f);
-		long[] d = new long[]{20,20};
-		ArrayImg<FloatType,FloatType> img = new ArrayImg<FloatType,FloatType>(t, d, 0);
-		
-		KernelTransform xfm = new KernelTransform(img); 
-		System.out.println("xfm: " + xfm);
-				
+	//	FloatType t = new FloatType(0f);
+	//	long[] d = new long[]{20,20};
+	//	ArrayImg<FloatType,FloatType> img = new ArrayImg<FloatType,FloatType>(t, d, 0);
+	//	
+	//	KernelTransform xfm = new KernelTransform(img); 
+	//	System.out.println("xfm: " + xfm);
+	//			
 
-		// set landmarks
-		
-		// computeW
+	//	// set landmarks
+	//	
+	//	// computeW
 
-	}
+	//}
 
 }
