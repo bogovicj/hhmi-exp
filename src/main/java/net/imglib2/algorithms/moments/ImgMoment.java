@@ -13,10 +13,21 @@ import org.ejml.data.DenseMatrix64F;
 import edu.jhu.ece.iacl.utility.ArrayUtil;
 import edu.jhu.ece.iacl.utility.SortWithIndices;
 
+/**
+ * Compute image moments, and orientations derived therefrom.
+ * 
+ * @author John Bogovic
+ *
+ */
 public class ImgMoment {
 	protected static Logger logger = LogManager.getLogger(ImgMoment.class.getName());
 
 	protected int        nd;
+	
+	double m;
+	double[] m1;	
+	double[] m2;
+	
 	protected double[] 	evals;
 	protected double[] 	evecs;
 
@@ -47,7 +58,6 @@ public class ImgMoment {
 
 		return mom;
 	}
-
 
 
 	public static <T extends RealType<T>> double moment0( Img<T> img ){
@@ -208,14 +218,14 @@ public class ImgMoment {
 		logger.debug("orientation for " + nd + " dims" );
 		double[] cov = new double[nd*nd];
 
-		double m  = moment0(img);	
+		m  = moment0(img);	
 		double msqr = m*m;
 		if(msqr < 1e-9){ 
 			logger.warn("... returning 0");
 			return cov; 
 		}
-		double[] m1 = moment1(img);	
-		double[] m2 = moment2(img);	
+		m1 = moment1(img);	
+		m2 = moment2(img);	
 
 		int k = 0;
 		for(int i=0; i<nd; i++)	for(int j=0; j<nd; j++) {
@@ -227,14 +237,42 @@ public class ImgMoment {
 	}
 
 
+	/**
+	 * Returns null unless orientationEvalsEvecs is called
+	 * @return the orientation eigenvalues
+	 */
 	public double[] getEvals(){
 		return evals;
 	}
-
+	/**
+	 * Returns null unless orientationEvalsEvecs is called
+	 * @return the orientation eigenvectors
+	 */
 	public double[] getEvecs(){
 		return evecs;
 	}
-		
+	/**
+	 * Returns null unless orientation is called
+	 * @return the zero-th moment
+	 */
+	public double getM0(){
+		return m;
+	}
+	/**
+	 * Returns null unless orientation is called
+	 * @return the first moment
+	 */
+	public double[] getM1(){
+		return m1;
+	}
+	/**
+	 * Returns null unless orientation is called
+	 * @return the second moment
+	 */
+	public double[] getM2(){
+		return m2;
+	}
+	
 	/** 
 	 * Returns a 12-vector
 	 * The first element is the largest eigenvalue
@@ -306,35 +344,6 @@ public class ImgMoment {
 		return out;
 	}
 	   
-//   public static DenseMatrix64F permuteEvects(SymmetricQRAlgorithmDecomposition in, int[] permutation){
-//      int N = in.getNumberOfEigenvalues();
-//      if(N==0){ return null; }
-//
-//      DenseMatrix64F out = new DenseMatrix64F(N,in.getEigenVector(0).numRows);
-//      for(int i=0; i<out.numRows; i++){
-//         for(int j=0; j<out.numCols; j++){
-//        	DenseMatrix64F evec = in.getEigenVector(permutation[out.numCols - j - 1]);
-//         	logger.debug("\tevec: " + evec);
-//            out.set(i,j,in.getEigenVector(permutation[out.numCols - j - 1]).get(i));
-//         }
-//      }
-//      return out;
-//   }
-//
-//   public static DenseMatrix64F permuteEvects(SymmetricQRAlgorithmDecomposition in, int[] permutation,float[] evals){
-//      int N = in.getNumberOfEigenvalues();
-//      if(N==0){ return null; }
-//
-//      DenseMatrix64F out = new DenseMatrix64F(N,in.getEigenVector(0).numRows);
-//      for(int i=0; i<out.numRows; i++){
-//         for(int j=0; j<out.numCols; j++){
-//        	DenseMatrix64F evec = in.getEigenVector(permutation[out.numCols - j - 1]);
-//        	logger.debug("\tevec: " + evec);
-//            out.set(i,j, evec.get(i)*evals[j]);
-//         }
-//      }
-//      return out;
-//   }
 
 	public static double magsqr(Complex64F v){
 		return (v.real*v.real + v.imaginary*v.imaginary);
