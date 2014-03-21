@@ -903,6 +903,10 @@ public class ArrayUtil {
 		for(int i=0; i<in.length; i++) {	out[i]=in[i]/sum; 	}
 		return out;
 	}
+	public static final void normalizeLengthInPlace(double[] in){
+		double sum = sumOfSquares(in);
+		for(int i=0; i<in.length; i++) {	in[i] = in[i]/sum; 	}
+	}
 	
 	public static final float[] normalizeTo(float[] in, float normsum){
 		float sum = 0;
@@ -917,6 +921,11 @@ public class ArrayUtil {
 		for(int i=0; i<in.length; i++) {	sum+=in[i]; 		}
 		for(int i=0; i<in.length; i++) {	out[i]=normsum*in[i]/sum; 	}
 		return out;
+	}
+	public static final void normalizeToInPlace(double[] in, double normsum){
+		double sum = 0;
+		for(int i=0; i<in.length; i++) {	sum+=in[i]; 		}
+		for(int i=0; i<in.length; i++) {	in[i] = normsum*in[i]/sum; 	}
 	}
 	
 	public static final int max(int[] in){
@@ -1172,6 +1181,11 @@ public class ArrayUtil {
 			img[i][j]/=val; 
 		}
 	}
+	public static final void divide(double[] img, double val){
+		for(int i=0; i<img.length; i++) {
+			img[i]/=val; 
+		}
+	}
 	public static final void divide(float[] img, float val){
 		for(int i=0; i<img.length; i++) {
 			img[i]/=val; 
@@ -1198,6 +1212,41 @@ public class ArrayUtil {
 	public static final double sum(double[] in){
 		double sum = 0;
 		for(int i=0; i<in.length; i++) {	sum+=in[i]; 		}
+		return sum;
+	}
+	public static long nnz(boolean[] in){
+		long sum = 0;
+		for(int i=0; i<in.length; i++) {	
+			if(in[i]) { sum++; }
+		}
+		return sum;
+	}
+	public static long nnz(double[] in){
+		long sum = 0;
+		for(int i=0; i<in.length; i++) {	
+			if(in[i]!=0) { sum++; }
+		}
+		return sum;
+	}
+	public static long nnz(float[] in){
+		long sum = 0;
+		for(int i=0; i<in.length; i++) {	
+			if(in[i]!=0) { sum++; }
+		}
+		return sum;
+	}
+	public static long nnz(int[] in){
+		long sum = 0;
+		for(int i=0; i<in.length; i++) {	
+			if(in[i]!=0) { sum++; }
+		}
+		return sum;
+	}
+	public static long nnz(long[] in){
+		long sum = 0;
+		for(int i=0; i<in.length; i++) {	
+			if(in[i]!=0) { sum++; }
+		}
 		return sum;
 	}
 	public static final float prod(float[] in){
@@ -2436,7 +2485,25 @@ public class ArrayUtil {
 		}
 		return out;
 	}
-	
+	public static final boolean[] reshape1D(boolean[][][] in, boolean rowwise){
+		int nx=in.length;
+		int ny=in[0].length;
+		int nz=in[0][0].length;
+		boolean[] out = new boolean[nx*ny*nz];
+		int i=0;
+		if(rowwise){
+			for(int x=0; x<nx; x++)  for(int y=0; y<ny; y++) for(int z=0; z<nz; z++) {
+				out[i]=in[x][y][z];
+				i++;
+			}
+		}else{
+			for(int z=0; z<nz; z++)  for(int y=0; y<ny; y++) for(int x=0; x<nx; x++){
+				out[i]=in[x][y][z];
+				i++;
+			}
+		}
+		return out;
+	}
 	public static final byte[] reshape1D(byte[][][] in, boolean rowwise){
 		int nx=in.length;
 		int ny=in[0].length;
