@@ -17,8 +17,13 @@ import net.imglib2.RealLocalizable;
 /**
  * Abstract superclass for kernel transform methods,
  * e.g. {@link ThinPlateSplineKernelTransform}.
+ * Ported from itk's itkKernelTransform.hxx
+ * <p>
+ * M. H. Davis, a Khotanzad, D. P. Flamig, and S. E. Harms, 
+ * “A physics-based coordinate transformation for 3-D image matching.,” 
+ * IEEE Trans. Med. Imaging, vol. 16, no. 3, pp. 317–28, Jun. 1997. 
  *
- *
+ * @author Kitware (itk)
  * @author John Bogovic
  *
  */
@@ -109,11 +114,12 @@ public abstract class KernelTransform {
 		aMatrix = new double[ndims][ndims];
 		bVector = new double[ndims];
 		displacement = new double[nLandmarks][ndims];
-		
+	
+		//TODO consider calling computeW() here.
 		
 	}
 
-	protected void printLandmarks(){
+	public void printLandmarks(){
 		double[] tmp = new double[ndims];
 
 		System.out.println("\nSOURCE LANDMARKS:");
@@ -143,7 +149,6 @@ public abstract class KernelTransform {
 		}
 	}
 
-	
 	public DenseMatrix64F computeReflexiveG(){
 		CommonOps.fill(gMatrix, 0);
 		for (int i=0; i<ndims; i++){
@@ -160,6 +165,7 @@ public abstract class KernelTransform {
 		for( int lnd=0; lnd<nLandmarks; lnd++){
 			sourceLandmarks.get(lnd).localize(l1);
 			computeG( result, gMatrix );
+			logger.debug("dMatrix size: " + dMatrix.getNumRows() + " x " + dMatrix.getNumCols());
 			for (int i=0; i<ndims; i++) for (int j=0; j<ndims; j++){
 				result[j] += gMatrix.get(i,j) * dMatrix.get(i,lnd);
 			}
@@ -169,16 +175,12 @@ public abstract class KernelTransform {
 	}
 
 	public void computeD(){
-
 		for( int i=0; i<nLandmarks; i++ ){
 			displacement[i] = subtract(	targetLandmarks.get(i),
 													sourceLandmarks.get(i));
 		}
 	}	
 
-	/**
-	 *
-	 */
 	protected double[] subtract(RealLocalizable p1, RealLocalizable p2){
 		int nd = p1.numDimensions();
 		double[] out = new double[nd];
@@ -213,9 +215,18 @@ public abstract class KernelTransform {
 		return out;
 	}
 
+	/**
+	 * The main workhorse method.
+	 * <p>
+	 * Implements Equation (5) in Davis et al.
+	 * and calls reorganizeW.
+	 *
+	 */
 	public void computeW(){
+		
 		computeL();
 		computeY();
+
 
 		// solve linear system 
 		LinearSolver<DenseMatrix64F> solver =  LinearSolverFactory.pseudoInverse(true);
@@ -223,7 +234,10 @@ public abstract class KernelTransform {
 		solver.solve(yMatrix, wMatrix);
 
 		reorganizeW();
+
+		logger.debug("gMatrix: " + gMatrix );
 	}
+
 
 	public void computeL(){
 
@@ -260,6 +274,11 @@ public abstract class KernelTransform {
 		}
 	}
 
+
+	/**
+	 * Builds the K matrix from landmark points
+	 * and G matrix.
+	 */
 	public void computeK(){
 
 	  computeD();
@@ -290,6 +309,9 @@ public abstract class KernelTransform {
 		}
 	}
 
+	/**
+	 * Fills the y matrix with the landmark point displacements.
+	 */
 	public void computeY(){
 
 		CommonOps.fill( yMatrix, 0 );
@@ -305,12 +327,16 @@ public abstract class KernelTransform {
 
 	}
 
-
+	/**
+	 * Copies data from the W matrix to the D, A, and b matrices
+	 * which represent the deformable, affine and translational
+	 * portions of the transformation, respectively.
+	 */
 	public void reorganizeW(){
-
 		
 		int ci = 0;
 
+		// the deformable (non-affine) part of the transform
 		for( int lnd=0; lnd<nLandmarks; lnd++){
 			for (int i=0; i<ndims; i++) {
 				dMatrix.set(i, lnd, wMatrix.get(ci, 0));
@@ -318,11 +344,13 @@ public abstract class KernelTransform {
 			}	
 		}
 
+		// the affine part of the transform
 		for( int j=0; j<ndims; j++) for (int i=0; i<ndims; i++) {
 			aMatrix[i][j] =  wMatrix.get(ci,0);
 			ci++;
 		}
 
+		// the translation part of the transform
 		for( int k=0; k<ndims; k++) {
 			bVector[k] = wMatrix.get(ci, 0);
 			ci++;

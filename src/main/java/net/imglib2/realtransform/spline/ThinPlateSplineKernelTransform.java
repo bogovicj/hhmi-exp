@@ -12,6 +12,18 @@ import org.ejml.ops.CommonOps;
 
 import java.util.ArrayList;
 
+/**
+ * Subclass of {@link KernelTransform} that implements a Thin-plate spline transformation.
+ * Ported from itk's itkThinPlateSplineKernelTransform.hxx
+ * <p>
+ * M. H. Davis, a Khotanzad, D. P. Flamig, and S. E. Harms, 
+ * “A physics-based coordinate transformation for 3-D image matching.,” 
+ * IEEE Trans. Med. Imaging, vol. 16, no. 3, pp. 317–28, Jun. 1997. 
+ *
+ * @author Kitware (itk)
+ * @author John Bogovic
+ *
+ */
 public class ThinPlateSplineKernelTransform extends KernelTransform {
 
    protected static Logger logger = LogManager.getLogger(ThinPlateSplineKernelTransform.class.getName());
@@ -44,10 +56,13 @@ public class ThinPlateSplineKernelTransform extends KernelTransform {
       double[] res = new double[ndims];
 
       for (int lnd = 0; lnd < nLandmarks; lnd++) {
+
          sourceLandmarks.get(lnd).localize(l1);
          double[] diff = subtract(thispt, l1);
          double nrm = Math.sqrt(normSqrd(diff));
-         for (int d = 0; d < nLandmarks; d++) {
+
+			logger.debug("dMatrix size: " + dMatrix.getNumRows() + " x " + dMatrix.getNumCols());
+         for (int d = 0; d < ndims; d++) {
             res[d] += nrm * dMatrix.get(d, lnd);
          }
       }
