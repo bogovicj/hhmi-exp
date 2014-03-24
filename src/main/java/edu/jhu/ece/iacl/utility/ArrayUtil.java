@@ -864,7 +864,7 @@ public class ArrayUtil {
 	}
 	public static final float[] normalizeLength(float[] in){
 		float[] out = new float[in.length];
-		float sum = sumOfSquares(in);
+		float sum = (float)Math.sqrt(sumOfSquares(in));
 		for(int i=0; i<in.length; i++) {	out[i]=in[i]/sum; 	}
 		return out;
 	}
@@ -899,7 +899,7 @@ public class ArrayUtil {
 	}
 	public static final double[] normalizeLength(double[] in){
 		double[] out = new double[in.length];
-		double sum = sumOfSquares(in);
+		double sum = Math.sqrt(sumOfSquares(in));
 		for(int i=0; i<in.length; i++) {	out[i]=in[i]/sum; 	}
 		return out;
 	}
@@ -1344,6 +1344,14 @@ public class ArrayUtil {
 	}
 
 	public static final String printArray(int[] in){
+		if(in==null) return "null";
+		String out = "";
+		for(int i=0; i<in.length; i++){
+			out += in[i] +" ";
+		}
+		return out;
+	}
+	public static final String printArray(long[] in){
 		if(in==null) return "null";
 		String out = "";
 		for(int i=0; i<in.length; i++){
