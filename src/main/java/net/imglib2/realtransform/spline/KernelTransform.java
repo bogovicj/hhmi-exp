@@ -45,7 +45,7 @@ public abstract class KernelTransform {
 	protected double[][] aMatrix;
 	protected double[] bVector;
 	
-	protected double 	stiffness = 0.25; // reasonable values take the range [0.0, 0.5]
+	protected double 	stiffness = 0.0; // reasonable values take the range [0.0, 0.5]
 	protected boolean	wMatrixComputeD = false; 
 	
 	protected ArrayList<RealLocalizable>  sourceLandmarks;
@@ -160,16 +160,26 @@ public abstract class KernelTransform {
 	public double[] computeDeformationContribution( double[] thispt ){
 
 		double[] result = new double[ndims];
+		computeDeformationContribution( thispt, result ); 
+		return result;
+	}
+	
+	public double[] computeDeformationContribution( double[] thispt, double[] result ){
+
 		double[] l1 = new double[ndims];
+		
+		logger.debug("dMatrix: " + dMatrix);
 
 		for( int lnd=0; lnd<nLandmarks; lnd++){
+			
 			sourceLandmarks.get(lnd).localize(l1);
 			computeG( result, gMatrix );
-			logger.debug("dMatrix size: " + dMatrix.getNumRows() + " x " + dMatrix.getNumCols());
+			
+//			logger.debug("dMatrix size: " + 
+//							dMatrix.getNumRows() + " x " + dMatrix.getNumCols());
 			for (int i=0; i<ndims; i++) for (int j=0; j<ndims; j++){
 				result[j] += gMatrix.get(i,j) * dMatrix.get(i,lnd);
 			}
-
 		}
 		return result;
 	}
@@ -227,15 +237,15 @@ public abstract class KernelTransform {
 		computeL();
 		computeY();
 
-
 		// solve linear system 
 		LinearSolver<DenseMatrix64F> solver =  LinearSolverFactory.pseudoInverse(true);
 		solver.setA(lMatrix);
 		solver.solve(yMatrix, wMatrix);
 
+		logger.debug("wMatrix:\n" + wMatrix );
+		
 		reorganizeW();
-
-		logger.debug("gMatrix: " + gMatrix );
+		
 	}
 
 
@@ -400,22 +410,27 @@ public abstract class KernelTransform {
       return transformPoint(pt);
    }
 
-   /**
-    * Transforms the input point according to the
-    * thin plate spline stored by this object.  
-    *
-    *
-    * @param pt the point to be transformed
-    * @return the transformed point
-    */
+	/**
+	 * Transforms the input point according to the
+	 * thin plate spline stored by this object.  
+	 *
+	 * @param pt the point to be transformed
+	 * @return the transformed point
+	 */
 	public double[] transformPoint(double[] pt){
+		
 		double[] result = computeDeformationContribution( pt );
 
-
+		// affine part
 		for (int i = 0; i < ndims; i++)
 			for (int j = 0; j < ndims; j++) {
 				result[i] += aMatrix[i][j] * pt[j];
 			}
+
+		// translational part
+		for(int i=0; i<ndims; i++){
+			result[i] += bVector[i] + pt[i];
+		}
 
 		return result;
 	}
@@ -429,20 +444,5 @@ public abstract class KernelTransform {
 		
 	}
 
-	//public static void main(String[] args) {
-
-	//	FloatType t = new FloatType(0f);
-	//	long[] d = new long[]{20,20};
-	//	ArrayImg<FloatType,FloatType> img = new ArrayImg<FloatType,FloatType>(t, d, 0);
-	//	
-	//	KernelTransform xfm = new KernelTransform(img); 
-	//	System.out.println("xfm: " + xfm);
-	//			
-
-	//	// set landmarks
-	//	
-	//	// computeW
-
-	//}
 
 }

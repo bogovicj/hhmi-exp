@@ -9,6 +9,7 @@ import org.apache.log4j.Logger;
 import org.ejml.data.DenseMatrix64F;
 import org.ejml.ops.CommonOps;
 
+import edu.jhu.ece.iacl.utility.ArrayUtil;
 
 import java.util.ArrayList;
 
@@ -51,20 +52,26 @@ public class ThinPlateSplineKernelTransform extends KernelTransform {
 
    @Override
    public double[] computeDeformationContribution(double[] thispt) {
+	   
+	  logger.debug(" computeDeformationContribution " );
 
-		double[] l1 = new double[ndims];
+	  double[] l1 = new double[ndims];
       double[] res = new double[ndims];
 
+      logger.debug("dMatrix: " + dMatrix);
+      
       for (int lnd = 0; lnd < nLandmarks; lnd++) {
 
          sourceLandmarks.get(lnd).localize(l1);
          double[] diff = subtract(thispt, l1);
          double nrm = Math.sqrt(normSqrd(diff));
 
-			logger.debug("dMatrix size: " + dMatrix.getNumRows() + " x " + dMatrix.getNumCols());
+         logger.debug(" result pre  def: " + ArrayUtil.printArray( res ) );
          for (int d = 0; d < ndims; d++) {
             res[d] += nrm * dMatrix.get(d, lnd);
          }
+         logger.debug(" result post def: " + ArrayUtil.printArray( res ) );
+         
       }
       return res;
    }

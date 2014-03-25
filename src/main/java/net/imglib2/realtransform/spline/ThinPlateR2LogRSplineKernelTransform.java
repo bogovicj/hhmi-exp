@@ -43,7 +43,7 @@ public class ThinPlateR2LogRSplineKernelTransform extends KernelTransform {
    @Override
    public double[] computeDeformationContribution(double[] thispt) {
 
-		double[] l1 = new double[ndims];
+	  double[] l1 = new double[ndims];
       double[] res = new double[ndims];
 
       for (int lnd = 0; lnd < nLandmarks; lnd++) {
@@ -52,7 +52,7 @@ public class ThinPlateR2LogRSplineKernelTransform extends KernelTransform {
          double[] diff = subtract(thispt, l1);
          double nrm = r2Logr( Math.sqrt(normSqrd(diff)) );
 
-         for (int d = 0; d < nLandmarks; d++) {
+         for (int d = 0; d < ndims; d++) {
             res[d] += nrm * dMatrix.get(d, lnd);
          }
       }
