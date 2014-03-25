@@ -864,7 +864,7 @@ public class ArrayUtil {
 	}
 	public static final float[] normalizeLength(float[] in){
 		float[] out = new float[in.length];
-		float sum = (float)Math.sqrt(sumOfSquares(in));
+		float sum = (float)Math.sqrt(sumSquares(in));
 		for(int i=0; i<in.length; i++) {	out[i]=in[i]/sum; 	}
 		return out;
 	}
@@ -875,7 +875,7 @@ public class ArrayUtil {
 		int nc=in[0][0][0].length;
 		float lensqr = -1;
 		for(int x=0; x<nx; x++)  for(int y=0; y<ny; y++) for(int z=0; z<nz; z++){
-			lensqr = sumOfSquares(in[x][y][z]);
+			lensqr = sumSquares(in[x][y][z]);
 			if(lensqr>0){
 				for(int c=0; c<nc; c++){ in[x][y][z][c] = (float)(in[x][y][z][c]/Math.sqrt(lensqr)); }
 			}
@@ -899,12 +899,12 @@ public class ArrayUtil {
 	}
 	public static final double[] normalizeLength(double[] in){
 		double[] out = new double[in.length];
-		double sum = Math.sqrt(sumOfSquares(in));
+		double sum = Math.sqrt(sumSquares(in));
 		for(int i=0; i<in.length; i++) {	out[i]=in[i]/sum; 	}
 		return out;
 	}
 	public static final void normalizeLengthInPlace(double[] in){
-		double sum = sumOfSquares(in);
+		double sum = sumSquares(in);
 		for(int i=0; i<in.length; i++) {	in[i] = in[i]/sum; 	}
 	}
 	
@@ -1016,6 +1016,40 @@ public class ArrayUtil {
 		return out;
 	}
 	
+	public static final int[] add(int[] a, int val){
+		int[] out = new int[a.length];
+		for(int i=0; i<a.length; i++) {out[i]=a[i]+val;}
+		return out;
+	}
+	public static final long[] add(long[] a, long val){
+		long[] out = new long[a.length];
+		for(int i=0; i<a.length; i++) {out[i]=a[i]+val;}
+		return out;
+	}
+	public static final float[] add(float[] a, float val){
+		float[] out = new float[a.length];
+		for(int i=0; i<a.length; i++) {out[i]=a[i]+val;}
+		return out;
+	}
+	public static final double[] add(double[] a, double val){
+		double[] out = new double[a.length];
+		for(int i=0; i<a.length; i++) {out[i]=a[i]+val;}
+		return out;
+	}
+	
+	public static final void addInPlace(int[] a, int val){
+		for(int i=0; i<a.length; i++) { a[i] += val; }
+	}
+	public static final void addInPlace(long[] a, long val){
+		for(int i=0; i<a.length; i++) { a[i] += val; }
+	}
+	public static final void addInPlace(float[] a, float val){
+		for(int i=0; i<a.length; i++) { a[i] += val; }
+	}
+	public static final void addInPlace(double[] a, double val){
+		for(int i=0; i<a.length; i++) { a[i] += val; }
+	}
+	
 	public static final int[] add(int[] a, int[] b){
 		if(a.length!=b.length) return null;
 		int[] out = new int[a.length];
@@ -1099,6 +1133,27 @@ public class ArrayUtil {
 		for(int i=0; i<a.length; i++){
 			a[i]-=b[i];
 		}
+	}
+	public static final int[] subtract(int[] a, int[] b){
+		int[] c = new int[a.length];
+		for(int i=0; i<a.length; i++){
+			c[i] = a[i]-b[i];
+		}
+		return c;
+	}
+	public static final long[] subtract(long[] a, long[] b){
+		long[] c = new long[a.length];
+		for(int i=0; i<a.length; i++){
+			c[i] = a[i]-b[i];
+		}
+		return c;
+	}
+	public static final float[] subtract(float[] a, float[] b){
+		float[] c = new float[a.length];
+		for(int i=0; i<a.length; i++){
+			c[i] = a[i]-b[i];
+		}
+		return c;
 	}
 	public static final double[] subtract(double[] a, double[] b){
       double[] c = new double[a.length];
@@ -1259,24 +1314,24 @@ public class ArrayUtil {
 		for(int i=0; i<in.length; i++) {	prod*=in[i]; 		}
 		return prod;
 	}
-	public static final float sumOfSquares(float[] in){
+	public static final float sumSquares(float[] in){
 		float sum = 0;
 		for(int i=0; i<in.length; i++) {	sum+=(in[i]*in[i]); 		}
 		return sum;
 	}
-	public static final double sumOfSquares(double[] in){
+	public static final double sumSquares(double[] in){
 		float sum = 0;
 		for(int i=0; i<in.length; i++) {	sum+=(in[i]*in[i]); 		}
+		return sum;
+	}
+	public static final float sumabs(float[] in){
+		float sum = 0;
+		for(int i=0; i<in.length; i++) {	sum+=Math.abs(in[i]); 		}
 		return sum;
 	}
 	public static final double sumabs(double[] in){
 		double sum = 0;
 		for(int i=0; i<in.length; i++) {	sum+=Math.abs(in[i]); 		}
-		return sum;
-	}
-	public static final double sumsquares(double[] in){
-		double sum = 0;
-		for(int i=0; i<in.length; i++) {	sum+=(in[i]*in[i]); 		}
 		return sum;
 	}
 	public static final void complement(boolean[][][] a){
