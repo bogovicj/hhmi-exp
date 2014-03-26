@@ -1,5 +1,6 @@
 package net.imglib2.util;
 
+import edu.jhu.ece.iacl.utility.ArrayUtil;
 import ij.ImagePlus;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccess;
@@ -8,6 +9,7 @@ import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.RealType;
 
 public class ImgUtil {
@@ -49,7 +51,30 @@ public class ImgUtil {
 		return out;
 	}
 	
-	public static <T extends RealType<T>> void copyToImg4d(Img<T> img, int[][][][] in){
+	public static <T extends RealType<T>> void copyToImg(Img<T> img, int[][][] in){
+		
+		Cursor<T> cursor = img.localizingCursor();
+		int[] pos = new int[3];
+		while(cursor.hasNext()){
+			cursor.next();
+			cursor.localize(pos);
+			cursor.get().setReal( (double) in[pos[0]][pos[1]][pos[2]] );
+		}
+	}
+	
+	public static <T extends RealType<T>> void copyToImg(Img<T> img, float[][][] in){
+		
+		Cursor<T> cursor = img.localizingCursor();
+		int[] pos = new int[3];
+		
+		while(cursor.hasNext()){
+			cursor.next();
+			cursor.localize(pos);
+			cursor.get().setReal(  in[pos[0]][pos[1]][pos[2]]);
+		}
+	}
+	
+	public static <T extends RealType<T>> void copyToImg(Img<T> img, int[][][][] in){
 		
 		Cursor<T> cursor = img.localizingCursor();
 		int[] pos = new int[4];
@@ -60,7 +85,7 @@ public class ImgUtil {
 		}
 	}
 	
-	public static <T extends RealType<T>> void copyToImg4d(Img<T> img, float[][][][] in){
+	public static <T extends RealType<T>> void copyToImg(Img<T> img, float[][][][] in){
 		
 		Cursor<T> cursor = img.localizingCursor();
 		int[] pos = new int[4];
@@ -70,6 +95,24 @@ public class ImgUtil {
 			cursor.localize(pos);
 			cursor.get().setReal(  in[pos[0]][pos[1]][pos[2]][pos[3]] );
 		}
+	}
+	
+	public static <T extends NativeType<T> & RealType<T>> Img<T> createGradientImg(int[] sz, double[] w, T t){
+		ArrayImgFactory<T> factory = new ArrayImgFactory<T>();
+		Img<T> out = factory.create( sz, t);
+		
+		Cursor<T> c = out.localizingCursor();
+		int[] pos = new int[3];
+		while(c.hasNext()){
+			T val = c.next();
+			c.localize(pos);
+			double[] res = ArrayUtil.multiply( w , ArrayUtil.toDouble(pos));
+			val.setReal( 
+					ArrayUtil.sum(res)
+				);
+		}
+		
+		return out;
 	}
 	
 	public static <T extends NativeType<T> & RealType<T>> Img<T> createGradientImgX(int width, int height, int depth, T t){
@@ -114,6 +157,28 @@ public class ImgUtil {
 			val.setReal(pos[2]);
 		}
 		
+		return out;
+	}
+	
+	public static < T extends RealType< T >> Img<T> threshold(Img<T> img, double thresh, boolean greaterThan){
+		
+		Img<T> out = img.factory().create(img, img.firstElement());
+		RandomAccess<T> ra = out.randomAccess();
+		Cursor<T> c = img.cursor();
+		
+		while(c.hasNext()){
+			T t = c.next();
+			ra.setPosition(c);
+			
+			if( greaterThan && t.getRealDouble() > thresh)
+			{
+				ra.get().set(t);
+			}
+			else if( !greaterThan && t.getRealDouble() < thresh )
+			{
+				ra.get().set(t);
+			}
+		}
 		return out;
 	}
 	

@@ -14,6 +14,7 @@ import edu.jhu.ece.iacl.utility.ArrayUtil;
 import ij.IJ;
 import ij.ImagePlus;
 import net.imglib2.*;
+import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.*;
 import net.imglib2.algorithm.edge.*;
@@ -21,6 +22,7 @@ import net.imglib2.algorithms.geometry.RodriguesRotation;
 import net.imglib2.algorithms.moments.ImgMoment;
 import net.imglib2.img.*;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.iterator.IntervalIterator;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.InvertibleRealTransform;
 import net.imglib2.type.numeric.*;
@@ -46,6 +48,10 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 	Img<T> img;
 	Img<B> mask;
 	
+	Img<ByteType> edgelPatchMasks;
+	byte b = 1;
+	 
+	
 	RealRandomAccess<T> interpRa;
 
 	//IntegralImgDouble<B> maskIntImg;
@@ -70,6 +76,10 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 				);
 		
 		interpRa = interpolant.realRandomAccess();
+		
+		ArrayImgFactory<ByteType> bfactory = new ArrayImgFactory<ByteType>(); 
+		edgelPatchMasks = bfactory.create(img, new ByteType());
+		
 	}
 
 	public void genImgChunks(){
@@ -82,7 +92,7 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 
 	public void computeEdgels(){
 		
-		edgels = SubpixelEdgelDetection.getEdgels(mask, mask.factory(), 2f);
+		edgels = SubpixelEdgelDetection.getEdgels(mask, mask.factory(), 0.6f);
 		logger.info("num edgels " + edgels.size());
 		
 	}
@@ -126,18 +136,47 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 	
 	public Img<T> edgelToImage( Edgel edgel, Img<T> src, int[] patchSize ){
 		
+		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
+		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
+		logger.info(" edgel mag : " + edgel.getMagnitude());
+		
+		
 		AffineTransform3D xfm = pickTransformation(edgel);
 		Img<T> res = normalPatch(
 						ArrayUtil.toDouble(edgel.getPosition()), 
 						patchSize, xfm, src 
 					 );
 		
+		
+		CrackCorrection.setMask(
+				ArrayUtil.toDouble(edgel.getPosition()), 
+						patchSize, xfm, edgelPatchMasks,
+						new ByteType(b)
+					);
+		b++;
+		
+		WriteWithIJ.printNumNonZero(this.edgelPatchMasks);
+//		System.out.println("nnz edgelPatch: " + );
+		
 		return res;
 	}
 
-	public void computeLocalCrackDepth(){
-		logger.debug("computeLocalCrackDepth");	
+	public Img<T> computeLocalCrackDepthDistFunc( Edgel edgel, int[] patchSize ){
+		logger.debug("computeLocalCrackDepthDistFunc");	
 
+		int[][][] maskInt = ImgUtil.toIntArray3d(mask);
+		boolean[][][] m = new boolean[maskInt.length][maskInt[0].length][maskInt[0][0].length];
+		ArrayUtil.fill( m, true );
+		
+		MgdmDecomposition mgdm = new MgdmDecomposition(maskInt,1,m);
+		float[][][] d1 = mgdm.exportDistanceForObject3d(1);
+		
+		Img<T> d1img = img.factory().create(img, img.firstElement());
+		ImgUtil.copyToImg(d1img, d1);
+		
+		Img<T> depthPatch = edgelToImage(edgel, d1img, patchSize);
+		
+		return depthPatch;
 	}
 	
 
@@ -146,19 +185,20 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		logger.debug("testCrackCorrPipeline");
 
 		String imgfn  = "/groups/jain/home/bogovicj/projects/crackSegmentation/crackVolDown_cp.tif";
-		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp.tif";
+		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp_smooth.tif";
 		String mgdmfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/LabelsMgdm_ds_interp_cp_v2.tif";
 		
-		String maskWSfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp_manPaint2.tif";
-
-		String patchOut1 = "/groups/jain/home/bogovicj/projects/crackSegmentation/patch1.tif";
-		String patchOut2 = "/groups/jain/home/bogovicj/projects/crackSegmentation/patch2.tif";
+		String maskWSfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/Labels_ds_interp_cp_manPaint2.tif";
+		String patchOut = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/patch";
+		String edgelPatchOut = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/edgel_patche";
+		String depthPatchOut = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/edgel_depthpatche";
 		
 		ImagePlus imgip = IJ.openImage(imgfn);
 		ImagePlus maskip = IJ.openImage(maskWSfn);
 
 		Img<FloatType> img = ImagePlusAdapter.convertFloat(imgip);
 		ByteImagePlus<UnsignedByteType> mask = ImagePlusAdapter.wrapByte(maskip); 
+		
 
 		CrackCorrection<FloatType, UnsignedByteType> cc = 
 				new CrackCorrection<FloatType, UnsignedByteType>( 
@@ -166,40 +206,32 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 
 		cc.computeEdgels();
 
-		float[] tgtPos  = new float[]{ 66f, 290f, 13f };
-		float[] tgtPos2 = new float[]{ 70f, 312f, 13f };
-
-		int i = cc.edgelIdxNearest( tgtPos );
-		int j = cc.edgelIdxNearest( tgtPos2 );
-
-		logger.debug( "\n i: " + i );
-		logger.debug( "ePos: " + ArrayUtil.printArray( cc.edgels.get(i).getPosition() ) );
-		logger.debug( "eGrd: " + ArrayUtil.printArray( cc.edgels.get(i).getGradient() ) + "\n" );
-
-		logger.debug( "\nj: " + j );
-		logger.debug( "ePos: " + ArrayUtil.printArray( cc.edgels.get(j).getPosition() ) );
-		logger.debug( "eGrd: " + ArrayUtil.printArray( cc.edgels.get(j).getGradient() ) + "\n" );
-
-
-		AffineTransform3D xfm1 = pickTransformation(cc.edgels.get(i));
-		AffineTransform3D xfm2 = pickTransformation(cc.edgels.get(j));
-
 		int[] N = new int[]{ 19, 19, 7 };
-		double[] p1 = ArrayUtil.toDouble(cc.edgels.get(i).getPosition());
-		double[] p2 = ArrayUtil.toDouble(cc.edgels.get(j).getPosition());
+		
+//		float[] tgtPos  = new float[]{ 66f, 290f, 13f };
+//		float[] tgtPos = new float[]{ 70f, 312f, 13f };
+		float[] tgtPos  = new float[]{ 139f, 227f, 13f };
+		
+		int i = cc.edgelIdxNearest( tgtPos );
 
-		Img<FloatType> img1 = normalPatch( p1, N, xfm1, img);
-	 	Img<FloatType> img2 = normalPatch( p2, N, xfm2, img);
-
+		logger.debug( "\nedgel idx: " + i );
+	 	
+		Img<FloatType> img1 = cc.edgelToImage(cc.edgels.get(i), img, N);
+		Img<FloatType> depthPatch = cc.computeLocalCrackDepthDistFunc( cc.edgels.get(i), N );
+		
+		
 		try {
 
-			logger.debug( "writing patches" );
+			logger.info( "writing patches" );
 			ImagePlus ip1 = ImgUtil.toImagePlus(img1);
-			IJ.save(ip1, patchOut1);
+			IJ.save(ip1, patchOut + "_" + i + ".tif");
+			
+			ImagePlus ipep = ImgUtil.toImagePlus( cc.edgelPatchMasks );
+			IJ.save(ipep, edgelPatchOut + "_" + i + ".tif");
 
-			ImagePlus ip2 = ImgUtil.toImagePlus(img2);
-			IJ.save(ip2, patchOut2);
-
+			ImagePlus ipdp = ImgUtil.toImagePlus( depthPatch );
+			IJ.save(ipdp, depthPatchOut + "_" + i + ".tif");
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -210,11 +242,13 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 
 		String imgfn  = "/groups/jain/home/bogovicj/projects/crackSegmentation/crackVolDown_cp.tif";
 		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp.tif";
+		
 		String mgdmfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/LabelsMgdm_ds_interp_cp_v2.tif";
+		String mgdmdstfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/DistMgdm_ds_interp_cp_v2.tif";
 		
 		String maskWSfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp_manPaint2.tif";
 
-		ImagePlus imgip = IJ.openImage(imgfn);
+		ImagePlus imgip  = IJ.openImage(imgfn);
 		ImagePlus maskip = IJ.openImage(maskfn);
 
 //		System.out.println("imgip " + imgip);
@@ -236,7 +270,6 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		boolean[][][]   mskArray = ImgUtil.toBooleanArray3dNeg(mask);
 		//float[][][] imgArray = toFloatArray3d(img);
 
-
 		System.out.println("nnz in mask: \n" +
 				ArrayUtil.nnz(ArrayUtil.reshape1D(mskArray, true))
 				);
@@ -246,95 +279,47 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		sideArray[0][0][13]     = 1;
 		sideArray[287][437][13] = 2;
 
-		MgdmDecomposition mgdm = new MgdmDecomposition(sideArray,3, mskArray);
-
-		int[][][][] mgdmLabels = mgdm.exportAllLabels3d();
-
-		Img<UnsignedByteType> mgdmLImg = mask.factory().create(
-				new long[]{ mask.dimension(0), mask.dimension(1),
-					mask.dimension(2), 3 },
-					new UnsignedByteType());
-
+		/***********/
+//		MgdmDecomposition mgdm = new MgdmDecomposition(sideArray,3, mskArray);
+//
+//		int[][][][] mgdmLabels = mgdm.exportAllLabels3d();
+//
+//		Img<UnsignedByteType> mgdmLImg = mask.factory().create(
+//				new long[]{ mask.dimension(0), mask.dimension(1),
+//					mask.dimension(2), 3 },
+//					new UnsignedByteType());
+		
 //	    Img<FloatType> d1img = img.factory().create(img, img.firstElement());
 //	    Img<FloatType> d2img = img.factory().create(img, img.firstElement());
 //	   
 //	    float[][][] d1 = mgdm.exportDistanceForObject3d(1);
 //	    float[][][] d2 = mgdm.exportDistanceForObject3d(2);
-	      
+	    
+		
 		try {
 
-			ImgUtil.copyToImg4d(mgdmLImg, mgdmLabels);
-			ImagePlus ipMgdm = ImgUtil.toImagePlus(mgdmLImg);
-			IJ.save(ipMgdm, mgdmfn);
+//			ImgUtil.copyToImg4d(mgdmLImg, mgdmLabels);
+//			ImagePlus ipMgdm = ImgUtil.toImagePlus(mgdmLImg);
+//			IJ.save(ipMgdm, mgdmfn);
 
-			//	       copyToImg4d(d1img, d1);
-			//	       ImagePlus ipMgdm = toImagePlus(d1img);
-			//	       IJ.save(ipMgdm, d1fn);
-			//	       
-			//	       copyToImg4d(d2img, d2);
-			//	       ipMgdm = toImagePlus(d2img);
-			//	       IJ.save(ipMgdm, d2fn);
-
+//	       copyToImg4d(d1img, d1);
+//	       ImagePlus ipMgdm = toImagePlus(d1img);
+//	       IJ.save(ipMgdm, d1fn);
+  
+//				       copyToImg4d(d2img, d2);
+//				       ipMgdm = toImagePlus(d2img);
+//				       IJ.save(ipMgdm, d2fn);
+			
+//			ImgUtil.copyToImg( d1img, d1);
+//			ImagePlus ip = ImgUtil.toImagePlus(d1img);
+//			IJ.save( ip, mgdmdstfn );
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 
 	}
 
-
-//	public static void testEdgelResamp(){
-//
-//		System.out.println("test Edgel Resamp");
-//
-//		Img<FloatType> testImg = createGradientImgX( 20, 20, 20, new FloatType() );
-//		System.out.println(" testImg: " + testImg );
-//	
-//		float[] norm = new float[]{ 1.0f, 1.0f, 0.0f };
-//		norm = ArrayUtil.normalizeLength(norm);
-//
-//		System.out.println(" normal vector: (" + ArrayUtil.printArray(norm) + ") "  );
-//
-//		Edgel edgel = new Edgel( new float[]{ 10.0f, 10.0f, 10.0f}, 
-//								 norm, 1);
-//		System.out.println("edgel : " + edgel);
-//
-//		NLinearInterpolatorFactory<FloatType> interpFactory = 
-//			new NLinearInterpolatorFactory<FloatType>();
-//
-//		RealRandomAccessible<FloatType> interpolant = 
-//			Views.interpolate( 
-//					Views.extendMirrorSingle( testImg ), interpFactory
-//			);
-//
-//		RealRandomAccess<FloatType> rra = interpolant.realRandomAccess();		
-//		double[] pos = new double[]{ 10.5, 10.5, 10.5 } ;
-//		rra.setPosition( pos );
-//		double val = rra.get().getRealDouble();		
-//
-//		System.out.println(" value at: (" + ArrayUtil.printArray(pos) + "): " + val );
-//
-//		InvertibleRealTransform xfm = pickTransformation(edgel);
-//		
-//		RealTransformRandomAccessible<FloatType, InverseRealTransform> res = 
-//				RealViews.transform(interpolant, xfm);
-//		
-//		RealTransformRealRandomAccess rtra = res.realRandomAccess();
-//		rtra.setPosition( pos );
-//		
-//		RealTransformRandomAccess xfmRa = res.randomAccess();
-//		int[] intPos = new int[]{10,10,10};
-//		xfmRa.setPosition(intPos);
-//		
-//		
-////		System.out.println(" xfm value at: (" + ArrayUtil.printArray(intPos) + "): " + val );
-//		
-////		System.out.println(" xfm value at: (" + ArrayUtil.printArray(intPos) + "): " + val );
-//		
-//		
-////		double xfmval = rtra.get()ed
-////		System.out.println(" xfm value at: (" + ArrayUtil.printArray(pos) + "): " + val );
-//
-//	}
 
 	public static void testEdgelResamp2(){
 
@@ -435,7 +420,6 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		RealRandomAccess<T> srcRealRa = interpolant1.realRandomAccess();
 		
 		int ndims_in  = src.numDimensions();
-		int ndims_out = patchSize.length;
 		
 		Img<T> out = src.factory().create( patchSize, Util.getTypeFromRandomAccess(src));
 		
@@ -499,6 +483,65 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 	}
 	
 	
+	/**
+	 *  Samples a patch of size N^d where d is the dimensionality of the 
+	 *  source image src. The input transformation maps the x- and y-axes 
+	 *  to the axes of the sampling plane and is typically determined by 
+	 *  the {@link pickTransformation} method.
+	 * 
+	 *
+	 * @param basepos point
+	 * @param N size of a dimension of the output patch
+	 * @param xfm transformation
+	 * @param src source image
+	 * @return 
+	 */
+	public static <L extends NumericType<L>> void setMask(double[] basepos, int[] patchSize,  
+			AffineTransform3D xfmIn,  Img<L> src, L val ){
+		
+		AffineTransform3D xfm = xfmIn.copy();
+		
+		RandomAccess<L> ra = src.randomAccess();
+//		ra.setPosition(position);
+		
+		int ndims_in  = src.numDimensions();
+		
+		logger.debug(" basepos  :" + ArrayUtil.printArray( basepos ) );
+		logger.debug(" out size :" + ArrayUtil.printArray( patchSize ) );
+
+		double[]  pos	= new double[ndims_in];
+		double[] dpos	= new double[ndims_in];
+		
+		// determine translation
+		double[] midPt = ArrayUtil.toDouble(patchSize);
+		ArrayUtil.addInPlace(midPt, -1);
+		ArrayUtil.divide(midPt, 2);
+		logger.debug(" midPt :" + ArrayUtil.printArray( midPt ) );
+		
+		double[] target = new double[ndims_in];
+		
+		xfm.apply(midPt, target);
+		double[] diff = ArrayUtil.subtract( basepos, target );
+		
+		logger.debug(" diff  :" + ArrayUtil.printArray( diff ) );
+		
+		for( int i=0; i<ndims_in; i++ ){
+			xfm.set( diff[i], i, ndims_in);
+		}
+
+		IntervalIterator iter = new IntervalIterator(patchSize);
+		while(iter.hasNext()){
+			
+			iter.fwd();
+			iter.localize(pos);
+			
+			xfm.apply( pos, dpos);
+			int[] pt = ArrayUtil.toIntRound(dpos);
+			
+			ra.setPosition(pt);
+			ra.get().set(val);
+		}
+	}
 	
 	public static AffineTransform3D pickTransformation(Edgel edgel){
 	
@@ -521,7 +564,6 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		AffineTransform3D R = new AffineTransform3D();
 		R.set(Ra);
 		
-		
 //		AffineTransform3D R = RodriguesRotation.rotation(
 //		new double[]{0,0,1}, ArrayUtil.toDouble(nrm));
 		
@@ -538,8 +580,7 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		SimpleMatrix nullspace = svd.nullSpace();
 		return nullspace.getMatrix();
 	}
-
-
+	
 	   
 	public static void main(String[] args){
 
@@ -550,7 +591,7 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 //		testEdgelResamp2();
 		
 		testCrackCorrPipeline();	
-
+		
 		System.out.println("crack correction finished");
 		System.exit(0);
 	}

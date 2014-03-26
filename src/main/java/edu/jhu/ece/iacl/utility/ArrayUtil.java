@@ -474,6 +474,11 @@ public class ArrayUtil {
 			in[i][j] = val;
 		}
 	}
+	public static final void fill(boolean[][][] in, boolean val){
+		for(int i=0; i<in.length; i++)for(int j=0; j<in[0].length; j++)for(int k=0; k<in[0][0].length; k++){
+			in[i][j][k] = val;
+		}
+	}
 	public static final void fill(float[][][] in, float val){
 		for(int i=0; i<in.length; i++)for(int j=0; j<in[0].length; j++)for(int k=0; k<in[0][0].length; k++){
 			in[i][j][k] = val;
@@ -827,6 +832,20 @@ public class ArrayUtil {
 		}
 		return b;
 	}
+	public static final int[] toIntRound(double[] a){
+		int[] b = new int[a.length];
+		for(int i=0; i<a.length; i++){
+			b[i]=(int)Math.round(a[i]);
+		}
+		return b;
+	}
+	public static final int[] toIntRound(float[] a){
+		int[] b = new int[a.length];
+		for(int i=0; i<a.length; i++){
+			b[i]=(int)Math.round(a[i]);
+		}
+		return b;
+	}
 	public static final int[][] toInt(double[][] a){
 		int[][] b = new int[a.length][a[0].length];
 		for(int i=0; i<a.length; i++)for(int j=0; j<a[0].length; j++){
@@ -1162,6 +1181,36 @@ public class ArrayUtil {
 		}
 		return c;
 	}
+	
+	public static final double[] multiply(double[] a, double[] b){
+		double[] out = new double[a.length];
+		for(int i=0; i<a.length; i++){
+			out[i]=a[i]*b[i]; 
+		}
+		return out;
+	}
+	public static final float[] multiply(float[] a, float[] b){
+		float[] out = new float[a.length];
+		for(int i=0; i<a.length; i++){
+			out[i]=a[i]*b[i]; 
+		}
+		return out;
+	}
+	public static final int[] multiply(int[] a, int[] b){
+		int[] out = new int[a.length];
+		for(int i=0; i<a.length; i++){
+			out[i]=a[i]*b[i]; 
+		}
+		return out;
+	}
+	public static final long[] multiply(long[] a, long[] b){
+		long[] out = new long[a.length];
+		for(int i=0; i<a.length; i++){
+			out[i]=a[i]*b[i]; 
+		}
+		return out;
+	}
+	
 	public static final double[] multiply(double[] in, double val){
 		double[] out = new double[in.length];
 		for(int i=0; i<in.length; i++){
