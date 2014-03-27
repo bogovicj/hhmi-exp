@@ -35,6 +35,7 @@ package net.imglib2.algorithms.region.localneighborhood;
 
 import net.imglib2.Interval;
 import net.imglib2.RandomAccess;
+import net.imglib2.algorithm.region.localneighborhood.Neighborhood;
 
 public interface CrossNeighborhoodFactory< T >
 {

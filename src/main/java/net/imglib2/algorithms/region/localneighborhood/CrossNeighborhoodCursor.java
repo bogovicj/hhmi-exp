@@ -36,6 +36,7 @@ package net.imglib2.algorithms.region.localneighborhood;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.algorithm.region.localneighborhood.Neighborhood;
 import net.imglib2.util.IntervalIndexer;
 
 public final class CrossNeighborhoodCursor< T > extends CrossNeighborhoodLocalizableSampler< T > implements Cursor< Neighborhood< T > >
@@ -70,7 +71,7 @@ public final class CrossNeighborhoodCursor< T > extends CrossNeighborhoodLocaliz
 		maxIndexOnLine = c.maxIndexOnLine;
 	}
 
-	@Override
+	
 	public void fwd()
 	{
 		++currentPos[ 0 ];
@@ -102,7 +103,7 @@ public final class CrossNeighborhoodCursor< T > extends CrossNeighborhoodLocaliz
 		}
 	}
 
-	@Override
+	
 	public void reset()
 	{
 		index = 0;
@@ -115,13 +116,13 @@ public final class CrossNeighborhoodCursor< T > extends CrossNeighborhoodLocaliz
 		}
 	}
 
-	@Override
+	
 	public boolean hasNext()
 	{
 		return index < maxIndex;
 	}
 
-	@Override
+	
 	public void jumpFwd( final long steps )
 	{
 		index += steps;
@@ -134,26 +135,26 @@ public final class CrossNeighborhoodCursor< T > extends CrossNeighborhoodLocaliz
 		}
 	}
 
-	@Override
+	
 	public Neighborhood< T > next()
 	{
 		fwd();
 		return get();
 	}
 
-	@Override
+	
 	public void remove()
 	{
 		// NB: no action.
 	}
 
-	@Override
+	
 	public CrossNeighborhoodCursor< T > copy()
 	{
 		return new CrossNeighborhoodCursor< T >( this );
 	}
 
-	@Override
+	
 	public CrossNeighborhoodCursor< T > copyCursor()
 	{
 		return copy();

@@ -36,14 +36,14 @@ package net.imglib2.algorithms.region.localneighborhood;
 
 import net.imglib2.Interval;
 import net.imglib2.RandomAccess;
-import net.imglib2.algorithm.region.localneighborhood.CrossNeighborhoodSkipCenter.LocalCrossCursor;
+import net.imglib2.algorithm.region.localneighborhood.Neighborhood;
 
 public class CrossNeighborhood< T > extends CrossNeighborhoodSkipCenter<T>
 {
 	public static < T > CrossNeighborhoodFactory< T > factory()
 	{
 		return new CrossNeighborhoodFactory< T >() {
-			@Override
+			
 			public Neighborhood< T > create( final long[] position, final long[] currentMin, final long[] currentMax, final Interval span, final RandomAccess< T > sourceRandomAccess )
 			{
 				return new CrossNeighborhood< T >( position, currentMin, currentMax, span, sourceRandomAccess );

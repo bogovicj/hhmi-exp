@@ -37,6 +37,7 @@ import net.imglib2.Interval;
 import net.imglib2.Localizable;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.algorithm.region.localneighborhood.Neighborhood;
 
 public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodLocalizableSampler< T > implements RandomAccess< Neighborhood< T > >
 {
@@ -50,7 +51,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		super( c );
 	}
 
-	@Override
+	
 	public void fwd( final int d )
 	{
 		++currentPos[ d ];
@@ -58,7 +59,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		++currentMax[ d ];
 	}
 
-	@Override
+	
 	public void bck( final int d )
 	{
 		--currentPos[ d ];
@@ -66,7 +67,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		--currentMax[ d ];
 	}
 
-	@Override
+	
 	public void move( final int distance, final int d )
 	{
 		currentPos[ d ] += distance;
@@ -74,7 +75,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		currentMax[ d ] += distance;
 	}
 
-	@Override
+	
 	public void move( final long distance, final int d )
 	{
 		currentPos[ d ] += distance;
@@ -82,7 +83,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		currentMax[ d ] += distance;
 	}
 
-	@Override
+	
 	public void move( final Localizable localizable )
 	{
 		for ( int d = 0; d < n; ++d )
@@ -94,7 +95,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		}
 	}
 
-	@Override
+	
 	public void move( final int[] distance )
 	{
 		for ( int d = 0; d < n; ++d )
@@ -105,7 +106,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		}
 	}
 
-	@Override
+	
 	public void move( final long[] distance )
 	{
 		for ( int d = 0; d < n; ++d )
@@ -116,7 +117,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		}
 	}
 
-	@Override
+	
 	public void setPosition( final Localizable localizable )
 	{
 		for ( int d = 0; d < n; ++d )
@@ -128,7 +129,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		}
 	}
 
-	@Override
+	
 	public void setPosition( final int[] position )
 	{
 		for ( int d = 0; d < n; ++d )
@@ -139,7 +140,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		}
 	}
 
-	@Override
+	
 	public void setPosition( final long[] position )
 	{
 		for ( int d = 0; d < n; ++d )
@@ -150,7 +151,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		}
 	}
 
-	@Override
+	
 	public void setPosition( final int position, final int d )
 	{
 		currentPos[ d ] = position;
@@ -158,7 +159,7 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		currentMax[ d ] = position + span.max( d );
 	}
 
-	@Override
+	
 	public void setPosition( final long position, final int d )
 	{
 		currentPos[ d ] = position;
@@ -166,13 +167,13 @@ public final class CrossNeighborhoodRandomAccess< T > extends CrossNeighborhoodL
 		currentMax[ d ] = position + span.max( d );
 	}
 
-	@Override
+	
 	public CrossNeighborhoodRandomAccess< T > copy()
 	{
 		return new CrossNeighborhoodRandomAccess< T >( this );
 	}
 
-	@Override
+	
 	public CrossNeighborhoodRandomAccess< T > copyRandomAccess()
 	{
 		return copy();

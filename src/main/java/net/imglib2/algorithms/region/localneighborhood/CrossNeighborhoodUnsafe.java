@@ -35,6 +35,7 @@ package net.imglib2.algorithms.region.localneighborhood;
 
 import net.imglib2.Interval;
 import net.imglib2.RandomAccess;
+import net.imglib2.algorithm.region.localneighborhood.Neighborhood;
 
 public final class CrossNeighborhoodUnsafe< T > extends CrossNeighborhood< T >
 {
@@ -42,7 +43,6 @@ public final class CrossNeighborhoodUnsafe< T > extends CrossNeighborhood< T >
 	{
 		return new CrossNeighborhoodFactory< T >()
 		{
-			@Override
 			public Neighborhood< T > create( final long[] position, final long[] currentMin, final long[] currentMax, final Interval span, final RandomAccess< T > sourceRandomAccess )
 			{
 				return new CrossNeighborhoodUnsafe< T >( position, currentMin, currentMax, span, sourceRandomAccess );
@@ -61,14 +61,14 @@ public final class CrossNeighborhoodUnsafe< T > extends CrossNeighborhood< T >
 		firstElementCursor = super.cursor();
 	}
 
-	@Override
+	
 	public T firstElement()
 	{
 		firstElementCursor.reset();
 		return firstElementCursor.next();
 	}
 
-	@Override
+	
 	public LocalCrossCursor cursor()
 	{
 		theCursor.reset();

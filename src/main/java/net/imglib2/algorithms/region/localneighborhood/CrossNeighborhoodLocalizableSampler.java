@@ -39,6 +39,7 @@ import net.imglib2.Interval;
 import net.imglib2.Localizable;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.Sampler;
+import net.imglib2.algorithm.region.localneighborhood.Neighborhood;
 
 public abstract class CrossNeighborhoodLocalizableSampler< T > extends AbstractInterval implements Localizable, Sampler< Neighborhood< T > >
 {
@@ -90,55 +91,55 @@ public abstract class CrossNeighborhoodLocalizableSampler< T > extends AbstractI
 		
 	}
 
-	@Override
+	
 	public Neighborhood< T > get()
 	{
 		return currentNeighborhood;
 	}
 
-	@Override
+	
 	public void localize( final int[] position )
 	{
 		currentNeighborhood.localize( position );
 	}
 
-	@Override
+	
 	public void localize( final long[] position )
 	{
 		currentNeighborhood.localize( position );
 	}
 
-	@Override
+	
 	public int getIntPosition( final int d )
 	{
 		return currentNeighborhood.getIntPosition( d );
 	}
 
-	@Override
+	
 	public long getLongPosition( final int d )
 	{
 		return currentNeighborhood.getLongPosition( d );
 	}
 
-	@Override
+	
 	public void localize( final float[] position )
 	{
 		currentNeighborhood.localize( position );
 	}
 
-	@Override
+	
 	public void localize( final double[] position )
 	{
 		currentNeighborhood.localize( position );
 	}
 
-	@Override
+	
 	public float getFloatPosition( final int d )
 	{
 		return currentNeighborhood.getFloatPosition( d );
 	}
 
-	@Override
+	
 	public double getDoublePosition( final int d )
 	{
 		return currentNeighborhood.getDoublePosition( d );

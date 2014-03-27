@@ -44,6 +44,8 @@ import net.imglib2.IterableInterval;
 import net.imglib2.IterableRealInterval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.algorithm.region.localneighborhood.Neighborhood;
+import net.imglib2.algorithm.region.localneighborhood.Shape;
 
 /**
  * A factory for Accessibles on rectangular neighboorhoods.
@@ -71,13 +73,12 @@ public class CrossShape implements Shape
 		this.skipCenter = skipCenter;
 	}
 
-	@Override
+	
 	public < T > NeighborhoodsAccessible< T > neighborhoods( final RandomAccessibleInterval< T > source )
 	{
 		return neighborhoodsRandomAccessible( source );
 	}
 
-	@Override
 	public < T > NeighborhoodsAccessible< T > neighborhoodsRandomAccessible( final RandomAccessibleInterval< T > source )
 	{
 		final CrossNeighborhoodFactory< T > f = skipCenter ? CrossNeighborhoodSkipCenterUnsafe.< T >factory() : CrossNeighborhoodUnsafe.< T >factory();
@@ -85,13 +86,11 @@ public class CrossShape implements Shape
 		return new NeighborhoodsAccessible< T >( source, spanInterval, f );
 	}
 
-	@Override
 	public < T > NeighborhoodsAccessible< T > neighborhoodsSafe( final RandomAccessibleInterval< T > source )
 	{
 		return neighborhoodsRandomAccessibleSafe( source );
 	}
 
-	@Override
 	public < T > NeighborhoodsAccessible< T > neighborhoodsRandomAccessibleSafe( final RandomAccessibleInterval< T > source )
 	{
 		final CrossNeighborhoodFactory< T > f = skipCenter ? CrossNeighborhoodSkipCenter.< T >factory() : CrossNeighborhood.< T >factory();
@@ -133,55 +132,47 @@ public class CrossShape implements Shape
 			size = s;
 		}
 
-		@Override
 		public RandomAccess< Neighborhood< T >> randomAccess()
 		{
 			return new CrossNeighborhoodRandomAccess< T >( source, span, factory );
 		}
 
-		@Override
+
 		public Cursor< Neighborhood< T >> cursor()
 		{
 			return new CrossNeighborhoodCursor< T >( source, span, factory );
 		}
 
-		@Override
 		public RandomAccess< Neighborhood< T >> randomAccess( final Interval interval )
 		{
 			return randomAccess();
 		}
 
-		@Override
 		public long size()
 		{
 			return size;
 		}
 
-		@Override
 		public Neighborhood< T > firstElement()
 		{
 			return cursor().next();
 		}
 
-		@Override
 		public Object iterationOrder()
 		{
 			return new FlatIterationOrder( this );
 		}
 
-		@Override
 		public boolean equalIterationOrder( final IterableRealInterval< ? > f )
 		{
 			return iterationOrder().equals( f.iterationOrder() );
 		}
 
-		@Override
 		public Iterator< Neighborhood< T >> iterator()
 		{
 			return cursor();
 		}
 
-		@Override
 		public Cursor< Neighborhood< T >> localizingCursor()
 		{
 			return cursor();

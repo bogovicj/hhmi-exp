@@ -43,13 +43,14 @@ import net.imglib2.IterableRealInterval;
 import net.imglib2.Positionable;
 import net.imglib2.RandomAccess;
 import net.imglib2.RealPositionable;
+import net.imglib2.algorithm.region.localneighborhood.Neighborhood;
 
 public class CrossNeighborhoodSkipCenter< T > extends AbstractLocalizable implements Neighborhood< T >
 {
 	public static < T > CrossNeighborhoodFactory< T > factory()
 	{
 		return new CrossNeighborhoodFactory< T >() {
-			@Override
+			
 			public Neighborhood< T > create( final long[] position, final long[] currentMin, final long[] currentMax, final Interval span, final RandomAccess< T > sourceRandomAccess )
 			{
 				return new CrossNeighborhoodSkipCenter< T >( position, currentMin, currentMax, span, sourceRandomAccess );
@@ -85,142 +86,142 @@ public class CrossNeighborhoodSkipCenter< T > extends AbstractLocalizable implem
 		this.structuringElementBoundingBox = span;
 	}
 
-	@Override
+	
 	public Interval getStructuringElementBoundingBox()
 	{
 		return structuringElementBoundingBox;
 	}
 
-	@Override
+	
 	public long size()
 	{
 		return size; // -1 because we skip the center pixel
 	}
 
-	@Override
+	
 	public T firstElement()
 	{
 		return cursor().next();
 	}
 
-	@Override
+	
 	public Object iterationOrder()
 	{
 		return this; // iteration order is only compatible with ourselves
 	}
 
-	@Override
+	
 	public boolean equalIterationOrder( final IterableRealInterval< ? > f )
 	{
 		return iterationOrder().equals( f.iterationOrder() );
 	}
 
-	@Override
+	
 	public double realMin( final int d )
 	{
 		return currentMin[ d ];
 	}
 
-	@Override
+	
 	public void realMin( final double[] min )
 	{
 		for ( int d = 0; d < n; ++d )
 			min[ d ] = currentMin[ d ];
 	}
 
-	@Override
+	
 	public void realMin( final RealPositionable min )
 	{
 		for ( int d = 0; d < n; ++d )
 			min.setPosition( currentMin[ d ], d );
 	}
 
-	@Override
+	
 	public double realMax( final int d )
 	{
 		return currentMax[ d ];
 	}
 
-	@Override
+	
 	public void realMax( final double[] max )
 	{
 		for ( int d = 0; d < n; ++d )
 			max[ d ] = currentMax[ d ];
 	}
 
-	@Override
+	
 	public void realMax( final RealPositionable max )
 	{
 		for ( int d = 0; d < n; ++d )
 			max.setPosition( currentMax[ d ], d );
 	}
 
-	@Override
+	
 	public Iterator< T > iterator()
 	{
 		return cursor();
 	}
 
-	@Override
+	
 	public long min( final int d )
 	{
 		return currentMin[ d ];
 	}
 
-	@Override
+	
 	public void min( final long[] min )
 	{
 		for ( int d = 0; d < n; ++d )
 			min[ d ] = currentMin[ d ];
 	}
 
-	@Override
+	
 	public void min( final Positionable min )
 	{
 		for ( int d = 0; d < n; ++d )
 			min.setPosition( currentMin[ d ], d );
 	}
 
-	@Override
+	
 	public long max( final int d )
 	{
 		return currentMax[ d ];
 	}
 
-	@Override
+	
 	public void max( final long[] max )
 	{
 		for ( int d = 0; d < n; ++d )
 			max[ d ] = currentMax[ d ];
 	}
 
-	@Override
+	
 	public void max( final Positionable max )
 	{
 		for ( int d = 0; d < n; ++d )
 			max.setPosition( currentMax[ d ], d );
 	}
 
-	@Override
+	
 	public void dimensions( final long[] dimensions )
 	{
 		for ( int d = 0; d < n; ++d )
 			dimensions[ d ] = this.dimensions[ d ];
 	}
 
-	@Override
+	
 	public long dimension( final int d )
 	{
 		return dimensions[ d ];
 	}
 
-	@Override
+	
 	public LocalCrossCursor cursor()
 	{
 		return new LocalCrossCursor( sourceRandomAccess.copyRandomAccess() );
 	}
 
-	@Override
+	
 	public LocalCrossCursor localizingCursor()
 	{
 		return cursor();
@@ -250,13 +251,13 @@ public class CrossNeighborhoodSkipCenter< T > extends AbstractLocalizable implem
 			index = c.index;
 		}
 
-		@Override
+		
 		public T get()
 		{
 			return source.get();
 		}
 
-		@Override
+		
 		public void fwd()
 		{
 			if ( ++index > maxIndexOnLine ){
@@ -293,27 +294,27 @@ public class CrossNeighborhoodSkipCenter< T > extends AbstractLocalizable implem
 			}
 		}
 
-		@Override
+		
 		public void jumpFwd( final long steps )
 		{
 			for ( long i = 0; i < steps; ++i )
 				fwd();
 		}
 
-		@Override
+		
 		public T next()
 		{
 			fwd();
 			return get();
 		}
 
-		@Override
+		
 		public void remove()
 		{
 			// NB: no action.
 		}
 
-		@Override
+		
 		public void reset()
 		{
 			index = 0;
@@ -323,67 +324,67 @@ public class CrossNeighborhoodSkipCenter< T > extends AbstractLocalizable implem
 			source.bck( 0 );
 		}
 
-		@Override
+		
 		public boolean hasNext()
 		{
 			return (curdim < dimensions.length - 1) || (index < maxIndexOnLine - 1); 
 		}
 
-		@Override
+		
 		public float getFloatPosition( final int d )
 		{
 			return source.getFloatPosition( d );
 		}
 
-		@Override
+		
 		public double getDoublePosition( final int d )
 		{
 			return source.getDoublePosition( d );
 		}
 
-		@Override
+		
 		public int getIntPosition( final int d )
 		{
 			return source.getIntPosition( d );
 		}
 
-		@Override
+		
 		public long getLongPosition( final int d )
 		{
 			return source.getLongPosition( d );
 		}
 
-		@Override
+		
 		public void localize( final long[] position )
 		{
 			source.localize( position );
 		}
 
-		@Override
+		
 		public void localize( final float[] position )
 		{
 			source.localize( position );
 		}
 
-		@Override
+		
 		public void localize( final double[] position )
 		{
 			source.localize( position );
 		}
 
-		@Override
+		
 		public void localize( final int[] position )
 		{
 			source.localize( position );
 		}
 
-		@Override
+		
 		public LocalCrossCursor copy()
 		{
 			return new LocalCrossCursor( this );
 		}
 
-		@Override
+		
 		public LocalCrossCursor copyCursor()
 		{
 			return copy();
