@@ -1,7 +1,11 @@
 package net.imglib2.util;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+
 import edu.jhu.ece.iacl.utility.ArrayUtil;
 import ij.ImagePlus;
+import ij.process.ImageProcessor;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccess;
 import net.imglib2.img.Img;
@@ -9,12 +13,30 @@ import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.type.NativeType;
-import net.imglib2.type.numeric.IntegerType;
-import net.imglib2.type.numeric.NumericType;
+import net.imglib2.type.Type;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.AbstractIntegerType;
 
 public class ImgUtil {
+	
+	public static <T extends Type<T>> void fill(Img<T> img, T value){
+		Cursor<T> cursor = img.cursor();
+		while(cursor.hasNext()){
+			cursor.next().set(value);
+		}
+	}
+	
+	public static <S extends RealType<S>> void printNumNonZero(Img<S> img){
+		Cursor<S> c = img.cursor();
+		int num = 0;
+		while(c.hasNext()){
+			S val = c.next();
+			if( val.getRealDouble() != 0 ){
+				num++;
+			}
+		}
+		System.out.println(img + " nnz: " + num );
+	}
 
    public static <T extends RealType<T>> int[][][] toIntArray3d(Img<T> img){
       int[][][] out = new int[(int)img.dimension(0)][(int)img.dimension(1)][(int)img.dimension(2)];
@@ -212,6 +234,43 @@ public class ImgUtil {
       return copyToImagePlus(img).getImagePlus();
    } 
 
+   public static <L extends AbstractIntegerType<L>> ArrayList<Integer> uniqueInt( Img<L> img ){
+	   
+	   ArrayList<Integer> set = new ArrayList<Integer>();
+	   Cursor<L> cursor = img.cursor();
+	   while(cursor.hasNext()){
+		   int l = cursor.next().getInteger();
+		   if(!set.contains(l)){
+			   set.add(l);
+		   }
+	   }
+	   
+	   return set;
+   }
+   
+   public static HashSet<Float> unique( ImagePlus img ){
+	   
+	   HashSet<Float> set = new HashSet<Float>();
+	   ImageProcessor ip = img.getProcessor();
+	   int N  = ip.getPixelCount();
+	   for (int i=0; i<N; i++) {
+		   set.add(  ip.getf(i)  );
+	   }
+	   
+	   return set;
+   }
+   
+   public static <L extends AbstractIntegerType<L>> HashSet<L> unique2( Img<L> img ){
+	   
+	   HashSet<L> set = new HashSet<L>();
+	   Cursor<L> cursor = img.cursor();
+	   while(cursor.hasNext()){
+		   set.add(cursor.next());
+	   }
+	   
+	   return set;
+   }
+   
    public static <L extends AbstractIntegerType<L>> void combineValues( Img<L> img, int[][] spec, boolean strict){
 
       removeDuplicates(spec);
