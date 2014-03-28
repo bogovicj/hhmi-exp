@@ -43,7 +43,7 @@ public class ImgUtil {
       Cursor<T> cursor = img.localizingCursor();
       int[] pos = new int[3];
       while(cursor.hasNext()){
-         cursor.next();
+         cursor.fwd();
          cursor.localize(pos);
          out[pos[0]][pos[1]][pos[2]] = (int)(cursor.get().getRealDouble());
       }
