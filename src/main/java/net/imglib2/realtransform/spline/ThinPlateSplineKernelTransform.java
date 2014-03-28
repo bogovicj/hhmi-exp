@@ -21,7 +21,7 @@ import java.util.ArrayList;
  * “A physics-based coordinate transformation for 3-D image matching.,” 
  * IEEE Trans. Med. Imaging, vol. 16, no. 3, pp. 317–28, Jun. 1997. 
  *
- * @author Kitware (itk)
+ * @author Kitware (ITK)
  * @author John Bogovic
  *
  */
@@ -43,17 +43,14 @@ public class ThinPlateSplineKernelTransform extends KernelTransform {
    public void computeG(double[] pt, DenseMatrix64F mtx) {
 
       double nrm = Math.sqrt(normSqrd(pt));
-
-      gMatrix = new DenseMatrix64F(ndims, ndims);
-      CommonOps.setIdentity(gMatrix);
-      CommonOps.scale(nrm,gMatrix);
+      
+      CommonOps.setIdentity( mtx );
+      CommonOps.scale( nrm, mtx);
 
    }
 
    @Override
    public double[] computeDeformationContribution(double[] thispt) {
-	   
-	  logger.debug(" computeDeformationContribution " );
 
 	  double[] l1 = new double[ndims];
       double[] res = new double[ndims];
@@ -66,15 +63,14 @@ public class ThinPlateSplineKernelTransform extends KernelTransform {
          double[] diff = subtract(thispt, l1);
          double nrm = Math.sqrt(normSqrd(diff));
 
-         logger.debug(" result pre  def: " + ArrayUtil.printArray( res ) );
+         logger.trace(" result pre  def: " + ArrayUtil.printArray( res ) );
          for (int d = 0; d < ndims; d++) {
             res[d] += nrm * dMatrix.get(d, lnd);
          }
-         logger.debug(" result post def: " + ArrayUtil.printArray( res ) );
+         logger.trace(" result post def: " + ArrayUtil.printArray( res ) );
          
       }
       return res;
    }
-
 
 }

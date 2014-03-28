@@ -9,9 +9,20 @@ import org.apache.log4j.Logger;
 import org.ejml.data.DenseMatrix64F;
 import org.ejml.ops.CommonOps;
 
-
 import java.util.ArrayList;
 
+/**
+ * Subclass of {@link KernelTransform} that implements a Thin-plate spline transformation.
+ * Ported from itk's itkThinPlateSplineR2LogRKernelTransform.hxx
+ * <p>
+ * M. H. Davis, a Khotanzad, D. P. Flamig, and S. E. Harms, 
+ * “A physics-based coordinate transformation for 3-D image matching.,” 
+ * IEEE Trans. Med. Imaging, vol. 16, no. 3, pp. 317–28, Jun. 1997. 
+ *
+ * @author Kitware (ITK)
+ * @author John Bogovic
+ *
+ */
 public class ThinPlateR2LogRSplineKernelTransform extends KernelTransform {
 
    protected double eps = 1e-8;
@@ -34,9 +45,8 @@ public class ThinPlateR2LogRSplineKernelTransform extends KernelTransform {
       double r = Math.sqrt(normSqrd(pt));
       double nrm = r2Logr(r);
 
-      gMatrix = new DenseMatrix64F(ndims, ndims);
-      CommonOps.setIdentity(gMatrix);
-      CommonOps.scale(nrm,gMatrix);
+      CommonOps.setIdentity(mtx);
+      CommonOps.scale(nrm,mtx);
 
    }
 
@@ -66,6 +76,5 @@ public class ThinPlateR2LogRSplineKernelTransform extends KernelTransform {
       }
       return nrm;
    }
-
 
 }

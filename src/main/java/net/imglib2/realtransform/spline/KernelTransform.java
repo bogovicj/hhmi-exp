@@ -23,7 +23,7 @@ import net.imglib2.RealLocalizable;
  * “A physics-based coordinate transformation for 3-D image matching.,” 
  * IEEE Trans. Med. Imaging, vol. 16, no. 3, pp. 317–28, Jun. 1997. 
  *
- * @author Kitware (itk)
+ * @author Kitware (ITK)
  * @author John Bogovic
  *
  */
@@ -56,6 +56,8 @@ public abstract class KernelTransform {
 	
 	protected static Logger logger = LogManager.getLogger(KernelTransform.class.getName());
 	
+	//TODO: Many of these methods could be optimized by performing them without
+	// explicit construction / multiplication of the matrices. 
 	public KernelTransform(){}
 
    /*
@@ -237,6 +239,9 @@ public abstract class KernelTransform {
 		computeL();
 		computeY();
 
+      logger.debug(" lMatrix: " + lMatrix);
+      logger.debug(" yMatrix: " + yMatrix);
+
 		// solve linear system 
 		LinearSolver<DenseMatrix64F> solver =  LinearSolverFactory.pseudoInverse(true);
 		solver.setA(lMatrix);
@@ -262,6 +267,7 @@ public abstract class KernelTransform {
 		CommonOps.insert( kMatrix, lMatrix, 0, 0 );
 	
       // bottom left O2 is already zeros after initializing 'lMatrix'
+		
       
 	}
 
@@ -282,6 +288,8 @@ public abstract class KernelTransform {
 			}
 			CommonOps.insert( I, pMatrix,  i*ndims, ndims*ndims );
 		}
+		//logger.debug(" pMatrix:\n" + pMatrix + "\n");
+		
 	}
 
 
@@ -291,32 +299,32 @@ public abstract class KernelTransform {
 	 */
 	public void computeK(){
 
-	  computeD();
+		computeD();
 
-      double[] p1  = new double[ndims];
-      double[] p2  = new double[ndims];
-      double[] res = new double[ndims];
+		double[] p1  = new double[ndims];
+		double[] p2  = new double[ndims];
+		double[] res = new double[ndims];
 
 		for( int i=0; i<nLandmarks; i++ ){
 
-         sourceLandmarks.get(i).localize(p1);
+			sourceLandmarks.get(i).localize(p1);
 
 			DenseMatrix64F G = computeReflexiveG();
 
 			CommonOps.insert(G, kMatrix, i * ndims, i * ndims);
-			
-			for( int j=i; j<nLandmarks; j++ ){
+
+			for( int j = i+1; j<nLandmarks; j++ ){
 
 				sourceLandmarks.get(j).localize(p2);
 
 				subtract( p1, p2, res );
-				computeG(res, G);			
+				computeG(res, G);
 
 				CommonOps.insert(G, kMatrix, i * ndims, j * ndims);
 				CommonOps.insert(G, kMatrix, j * ndims, i * ndims);
-
 			}
 		}
+		logger.debug(" kMatrix: \n" + kMatrix + "\n");
 	}
 
 	/**
