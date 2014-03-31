@@ -12,12 +12,55 @@ import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
+import net.imglib2.ops.operation.randomaccessibleinterval.unary.DistanceMap;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.Type;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.AbstractIntegerType;
+import net.imglib2.type.numeric.real.FloatType;
 
 public class ImgUtil {
+	
+	public static <B extends AbstractIntegerType<B>> Img<FloatType> signedDistance(Img<B> mask){
+		
+		DistanceMap<B> dm = new DistanceMap<B>();
+		ArrayImgFactory<FloatType> ffactory = new ArrayImgFactory<FloatType>();
+		Img<FloatType> sdf = ffactory.create(mask, new FloatType());
+		Img<FloatType> sdfi = ffactory.create(mask, new FloatType());
+		
+		
+		ImgUtil.printNumNonZero(mask);
+		
+		// inside region
+		dm.compute(mask, sdf);
+		
+		// negate mask
+		Img<B> maskInv = ImgUtil.thresholdMap(mask, 1, false);
+		ImgUtil.printNumNonZero(maskInv);
+		
+		// oustide region
+		dm.compute(maskInv, sdfi);
+		
+		 Cursor<FloatType> cursor = sdf.cursor();
+		 Cursor<FloatType> cursori = sdfi.cursor();
+		 while(cursor.hasNext()){
+			 cursor. fwd();
+			 cursori.fwd();
+			 
+			 // Distance map returns squared distance
+			 // 
+			 double inVal  = Math.sqrt(cursor.get().getRealDouble());
+			 double outVal = Math.sqrt(cursori.get().getRealDouble());
+			 
+			 if(inVal > 0){  inVal -= 0.5; }
+			 if(outVal > 0){ outVal -= 0.5; }
+			 
+			 inVal *= -1; 						 // negate inside
+			 cursor.get().set( (float)(inVal + outVal) ); // add outside
+		 }
+		
+		return sdf;
+	}
 	
 	public static <T extends Type<T>> void fill(Img<T> img, T value){
 		Cursor<T> cursor = img.cursor();
@@ -205,6 +248,28 @@ public class ImgUtil {
       }
       return out;
    }
+   
+   public static < T extends RealType< T >> Img<T> thresholdMap(Img<T> img, double thresh, boolean greaterThan){
+	      
+	      Img<T> out = img.factory().create(img, img.firstElement());
+	      RandomAccess<T> ra = out.randomAccess();
+	      Cursor<T> c = img.cursor();
+	      
+	      while(c.hasNext()){
+	         T t = c.next();
+	         ra.setPosition(c);
+	         
+	         if( greaterThan && t.getRealDouble() > thresh)
+	         {
+	            ra.get().setOne();
+	         }
+	         else if( !greaterThan && t.getRealDouble() < thresh )
+	         {
+	            ra.get().setOne();
+	         }
+	      }
+	      return out;
+	   }
    
    public static < T extends NativeType< T >> ImagePlusImg<T, ?> copyToImagePlus(Img<T> img) throws Exception {
 
