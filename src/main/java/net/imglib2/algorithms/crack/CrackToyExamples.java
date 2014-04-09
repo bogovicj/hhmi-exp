@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 import net.imglib2.io.*;
+import net.imglib2.meta.CalibratedSpace;
+import net.imglib2.ops.operation.randomaccessibleinterval.unary.DistanceMap;
 import net.imglib2.type.*;
 import net.imglib2.type.numeric.integer.*;
 import net.imglib2.type.numeric.real.*;
@@ -24,8 +26,10 @@ public class CrackToyExamples {
 		String crackMaskFn = "/groups/jain/home/bogovicj/projects/crackSegmentation/toy/toyCrack.tif";
 		String depthFn = "/groups/jain/home/bogovicj/projects/crackSegmentation/toy/toyCrack_depth.tif";
 //		String patchFn = "/groups/jain/home/bogovicj/projects/crackSegmentation/toy/toyCrack_patch.tif";
-		String patch2Fn = "/groups/jain/home/bogovicj/projects/crackSegmentation/toy/toyCrack_patch2.tif";
-
+		
+		String patchDepthFn = "/groups/jain/home/bogovicj/projects/crackSegmentation/toy/toyCrack_patchDepthNorm.tif";
+		String patchFn = "/groups/jain/home/bogovicj/projects/crackSegmentation/toy/toyCrack_patchImgNorm.tif";
+		
 		IntType type = new IntType();
 		ArrayImgFactory< IntType > ifactory = new ArrayImgFactory< IntType >();
 		ArrayImgFactory< FloatType > ffactory = new ArrayImgFactory< FloatType >();
@@ -52,7 +56,7 @@ public class CrackToyExamples {
 						img, mask );
 
 		float[] tgtPos  = new float[]{9f, 11f, 3f};
-		int[] patchSize = new int[]{ 7, 7 };
+		int[] patchSize = new int[]{ 11, 11 };
 		
 		cc.computeEdgels();
 		int i = cc.edgelIdxNearest( tgtPos );
@@ -69,23 +73,32 @@ public class CrackToyExamples {
 //		write( depthPatch, depthFn );
 //		write( imgPatch, patchFn );
 		
-		Img<FloatType> imgPatch = cc.computeCrackDepthNormal(edgel, patchSize);
-//		write( imgPatch, patch2Fn );
+		cc.computeCrackDepthNormal(edgel, patchSize);
+		ImgUtil.write( cc.depthPatch, patchDepthFn );
+		ImgUtil.write( cc.imgPatch, patchFn );
 		
 	}
 	
 
-	public static <T extends NativeType<T>> void write(Img<T> img, String fn)
-	{
-		try
+	public static void testDistXfm(){
+		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/toy/toyCrack.tif";
+		String distXfmfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/toy/toyCrack_distXfm.tif";
+		
+		IntType type = new IntType();
+		ArrayImgFactory< IntType > ifactory = new ArrayImgFactory< IntType >();
+
+		Img<IntType> mask 		= null;
+		try 
 		{
-			ImagePlus ipdp = ImgUtil.toImagePlus( img );
-			IJ.save(ipdp, fn);
+			mask 	= new ImgOpener().openImg( maskfn , ifactory, type );
 		}
-		catch(Exception e)
+		catch (ImgIOException e)
 		{
 			e.printStackTrace();
 		}
+
+		Img<FloatType> distXfm = ImgUtil.signedDistance(mask);
+		ImgUtil.write(distXfm, distXfmfn);
 	}
 	
 	public static void testMgdm(){
@@ -128,7 +141,7 @@ public class CrackToyExamples {
 		print(dists);
 		
 //		int x = 9;
-//		int y = 11;
+//		int y = 11; 
 //		int z = 3;
 //		float dist0 = mgdm.exportDistanceForObject3d(x, y, z, 0);
 //		float dist1 = mgdm.exportDistanceForObject3d(x, y, z, 1);
@@ -190,8 +203,10 @@ public class CrackToyExamples {
 	
 	public static void main(String[] args) {
 
-//		crackToy1();
-		testMgdm();
+		crackToy1();
+		
+//		testMgdm();
+//		testDistXfm();
 		
 		System.out.println("done");
 		System.exit(0);
