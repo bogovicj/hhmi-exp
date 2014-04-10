@@ -5,8 +5,6 @@ import ij.ImagePlus;
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 import jitk.spline.ThinPlateR2LogRSplineKernelTransformFloat;
-import jitk.spline.ThinPlateR2LogRSplineKernelTransformTest;
-import jitk.spline.XfmUtils;
 import mpicbg.ij.ThinPlateSplineMapping;
 import mpicbg.trakem2.transform.ThinPlateSplineTransform;
 
@@ -115,101 +113,7 @@ public class TpsBeeExample {
 
 	}
 	
-	public static void testLegsDeformationSeparable(){
-		int nx = 640;
-		int ny = 374;
-		
-		float[][] srcPts = new float[][]{
-				{0,  0, nx, nx, 171, 297, 444, 221, 293, 395},
-				{0, ny, 0 , ny, 262, 265, 261, 211, 211, 211 }
-		};
-		
-		float[][] tgtPts = new float[][]{
-				{0,  0, nx, nx, 127, 297, 490, 221, 293, 395 },
-				{0, ny,  0, ny, 313, 313, 313, 211, 211, 211 }
-		};
-		
-		
-		String dstImgFn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1-tpsXfmLEGS-Sep.tif";
-//		String dstXfmFn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1-tpsXfm.txt";
-		testTpsBeeSep( srcPts, tgtPts, dstImgFn, true );
-
-	}
-	
-	public static void testBeeAffine(){
-		int nx = 640;
-		int ny = 374;
-		
-		float[][] srcPts = new float[][]{
-				{0,  0, nx, nx, 171, 297, 444, 221, 293, 395},
-				{0, ny, 0 , ny, 262, 265, 261, 211, 211, 211 }
-		};
-		float [][] aff = new float[][]{
-						{0, 1, 0},
-						{0, 0, 1},
-						{1, 0, 0} };
-
-		float[][] tgtPts = XfmUtils.genPtListAffine(srcPts, aff);
-		
-//		String dstImgFn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1-AFF-tpsAFF.tif";
-//		testTpsBee( srcPts, tgtPts, dstImgFn, true );
-		
-		String dstImgFn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1-AFF-tpsNOAFF.tif";
-		testTpsBee( srcPts, tgtPts, dstImgFn, false );
-		
-	}
-	
-	public static void testTpsBeeSep(float[][] srcPts, float[][] tgtPts, String dstImgFn ){
-		testTpsBee(srcPts, tgtPts, dstImgFn, true);
-	}
-	
-	public static void testTpsBeeSep(float[][] srcPts, float[][] tgtPts, String dstImgFn, boolean doAffine ){
-		
-		String srcImgFn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1.tif";
-		
-		ImagePlus srcImg = IJ.openImage(srcImgFn);
-		ImageProcessor srcIp = srcImg.getProcessor();
-		int nx = srcIp.getWidth();
-		int ny = srcIp.getHeight();
-		
-		ThinPlateR2LogRSplineKernelTransformFloat tps = new 
-				ThinPlateR2LogRSplineKernelTransformFloat(2, tgtPts, srcPts);
-//		ThinPlateR2LogRSplineKernelTransformFloat tps = new 
-//				ThinPlateR2LogRSplineKernelTransformFloat(2, srcPts, tgtPts);
-		
-		tps.computeAffine();
-		tps.updateDisplacementPostAffine();
-		tps.computePostAffineDef();
-		
-//		System.out.println( tps.getAffine() );
-		
-		ThinPlateSplineTransform xfm  = new ThinPlateSplineTransform(tps);
-		ThinPlateSplineTransform xfm2 = new ThinPlateSplineTransform();
-		
-		String str = xfm.toDataString();
-		System.out.println("\n" + str + "\n");
-		
-		xfm2.init(str);
-		
-		float[] loc = new float[]{127, 313};
-		xfm.applyInPlace(loc);
-		
-		System.out.println(" loc: " + loc[0] + " " + loc[1]);
-		
-		ImageProcessor dstIp = new ByteProcessor( nx, ny );
-		ThinPlateSplineMapping.mapInterval(tps, srcIp, dstIp);
-		
-		ImagePlus dstImg = new ImagePlus(srcImg.getTitle()+"_tps", dstIp);
-		
-		IJ.save(dstImg, dstImgFn);
-		
-	}
-	
 	public static void testTpsBee(float[][] srcPts, float[][] tgtPts, String dstImgFn ){
-		testTpsBee(srcPts, tgtPts, dstImgFn, true);
-	}
-	
-	public static void testTpsBee(float[][] srcPts, float[][] tgtPts, String dstImgFn, boolean doAffine ){
 		
 		String srcImgFn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1.tif";
 		
@@ -223,7 +127,7 @@ public class TpsBeeExample {
 //		ThinPlateR2LogRSplineKernelTransformFloat tps = new 
 //				ThinPlateR2LogRSplineKernelTransformFloat(2, srcPts, tgtPts);
 		
-		tps.setDoAffine(doAffine);
+//		tps.setDoAffine(false);
 		tps.computeW();
 		
 //		System.out.println( tps.getAffine() );
@@ -255,10 +159,7 @@ public class TpsBeeExample {
 		System.out.println("Starting");
 		
 //		testBoxDeformation();
-//		testLegsDeformation();
-//		testBeeAffine();
-		
-		testLegsDeformationSeparable();
+		testLegsDeformation();
 		
 		System.out.println("Finished");
 		System.exit(0);

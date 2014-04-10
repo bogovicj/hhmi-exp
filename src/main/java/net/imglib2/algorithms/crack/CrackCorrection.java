@@ -26,6 +26,7 @@ import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.io.ImgIOException;
 import net.imglib2.io.ImgOpener;
 import net.imglib2.iterator.IntervalIterator;
+import net.imglib2.ops.operation.randomaccessibleinterval.unary.DistanceMap;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.InvertibleRealTransform;
@@ -45,11 +46,17 @@ import net.imglib2.util.Util;
  *
  * Class performing correction of high-pressure freezing cracks
  * in electron microscopy images.
+ * 
+ * Notes on implementation:
+ * {@link Edgel}s are computed such that their position is <i>inside</i> the 
+ * crack mask.  Local depth can be computed either by directly polling the distance
+ * map at patch coordinates or by tracing a patch in the edgel normal direction until
+ * a point outside the crack is reached.
  *
  * @author John Bogovic
  *
  * @param <T> image type
- * @param <B> crack label type
+ * @param <B> label type
  */
 public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerType<B>> {
 
@@ -141,6 +148,15 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 
 		return i;
 	}
+	
+	/**
+	 * Returns the integer coordinate of the midpoint of a patch
+	 * with the specified size.  Is only accurate for patches
+	 * with an odd size in every dimension.
+	 * 
+	 * @param patchSize size of the patch
+	 * @return the midpoint coordinate
+	 */
 	public static int[] patchSizeToMidpt(int[] patchSize){ // determine translation
 
 		int[] midPt = ArrayUtil.clone(patchSize);
@@ -191,7 +207,7 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		RealTransformRandomAccess ra = rtra.randomAccess();
 
 		Img<T> patchImg = img.factory().create(patchSize, img.firstElement());
-		Img<FloatType> maskDist = compMaskDist();
+		Img<FloatType> maskDist = ImgUtil.signedDistance(mask);
 		
 		RealTransformRandomAccessible<FloatType,?> distrtra = edgelToView( edgel, maskDist, patchSizeAug );
 		RealTransformRandomAccess distra = distrtra.randomAccess();
@@ -207,72 +223,101 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		
 		// do we travel in +z or -z direction to get to boundary
 		int[] midPt = patchSizeToMidpt(patchSizeAug);
-		ra.setPosition(midPt);
+		distra.setPosition(midPt);
+		
+		double[] testpos = new double[3];
+		distra.localize(testpos);
+		logger.debug(" edgel patch position: " + ArrayUtil.printArray(testpos));
+		
 		
 		double ctrVal = ((FloatType)distra.get()).getRealDouble();
 		
-		ra.fwd(zdimIdx);
+		distra.fwd(zdimIdx);
 		double fwdVal = ((FloatType)distra.get()).getRealDouble();
 		
-		ra.bck(zdimIdx);
-		ra.bck(zdimIdx);
+		distra.localize(testpos);
+		logger.debug(" edgel patch position: " + ArrayUtil.printArray(testpos));
+		
+		
+		distra.bck(zdimIdx);
+		distra.bck(zdimIdx);
 		double bckVal = ((FloatType)distra.get()).getRealDouble();
+		
+		distra.localize(testpos);
+		logger.debug(" edgel patch position: " + ArrayUtil.printArray(testpos));
+		
 		
 		logger.debug(" dist val at bck: " + bckVal );
 		logger.debug(" dist val at ctr: " + ctrVal );
 		logger.debug(" dist val at fwd: " + fwdVal );
 		
-		boolean goFwd = true;
+		boolean goFwd = false;
 		if( fwdVal < bckVal ){
-			logger.warn( " GOOD " );
-		}else if( fwdVal > bckVal ){
-			logger.warn( " BAD " );
-			goFwd = false;
+			logger.info( " GOOD " );
+		}else if( fwdVal > ctrVal ){
+			logger.info( " BAD " );
+			goFwd = true;
 		}else{
 			//they're equal
 			logger.warn( "CAN NOT DETERMINE DIRECTION" );
 			return null;
 		}
 		
-//		double d = -1;
-//		double dist = 0;
-//		Cursor<T> curs = patchImg.cursor();
-//		while(curs.hasNext())
-//		{
-//			curs.fwd();
-//			ra.setPosition(curs);
-//			
-//			dist = 0;
-//			//curs.get().set((T)ra.get());
-//			for(int n=0; n<500; n++){
-//				
-//				dist++;
-//				
-//				if(goFwd){
-//					ra.fwd(zdimIdx);
-//				}else{
-//					ra.bck(zdimIdx);
-//				}
-//				d = ((T)distra.get()).getRealDouble();
-//				logger.debug(" dist here " + d );
-//				boolean isInside = ( d < 0);
-//				
-//				if(isInside){
-//					break;
-//				}
-//			
-//			}
-//	
+		
+		int[] debugPatchPos = new int[patchImg.numDimensions()]; 
+		int[] debugDra = new int[distrtra.numDimensions()];
+		
+		double d = -1;
+		double dist = 1;
+		Cursor<T> curs = patchImg.cursor();
+		while(curs.hasNext())
+		{
+			curs.fwd();
+			curs.localize(debugPatchPos);
+			
+			logger.debug(" patch pos: " + ArrayUtil.printArray(debugPatchPos));
+			
+			distra.setPosition(curs);
+			distra.setPosition(0, zdimIdx);
+			
+			distra.localize(debugDra);
+			logger.debug(" distra pos : " + ArrayUtil.printArray(debugDra));
+			
+			
+			dist = 1;
+			for(int n=0; n<500; n++){
+				
+				if(goFwd){
+					distra.fwd(zdimIdx);
+				}else{
+					distra.bck(zdimIdx);
+				}
+				
+				distra.localize(debugDra);
+				logger.debug(" distra pos : " + ArrayUtil.printArray(debugDra));
+				
+				d = ((T)distra.get()).getRealDouble(); // don't like this
+				
+				logger.debug(" dist here " + d );
+				
+				if( d > 0){ // we're outside the crack
+					dist -= d;
+					break;
+				}else{
+					dist ++;
+				}
+			}
+			curs.get().setReal(dist);
 //			break; // for debug only 
-//		}
-//		
-//		logger.debug(" dist comp w normality: " + dist );
+		}
+		
+		logger.debug(" dist comp w normality: " + dist );
 		
 		
 		return patchImg;
 	}
 	
-	public Img<FloatType> compMaskDist()
+	public Img<FloatType> compMaskDistMgdm()
 	{
 		int[][][] maskInt = ImgUtil.toIntArray3d(mask);
 		boolean[][][] m = new boolean[maskInt.length][maskInt[0].length][maskInt[0][0].length];
@@ -626,6 +671,18 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		return xfm;	
 	}
 
+	
+	/**
+	 * Returns a transformed view of the input source image relative to an edgel.
+	 * The {@link Edgel} position will map to the midpoint the output patch.
+	 * The +z axis of the output view corresponds to the gradient direction of 
+	 * the edgel.
+	 * 
+	 * @param edgel the edgel
+	 * @param src the source image
+	 * @param patchSize the patch size
+	 * @return the transformed view into the source image
+	 */
 	public static <T extends RealType<T>> RealTransformRandomAccessible<T,InverseRealTransform> edgelToView(Edgel edgel, Img<T> src, int[] patchSize) 
 	{
 		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
@@ -648,11 +705,9 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 	}
 	
 	/**
-	 *  Samples a patch of size N^d where d is the dimensionality of the
-	 *  source image src. The input transformation maps the x- and y-axes
-	 *  to the axes of the sampling plane and is typically determined by
-	 *  the {@link pickTransformation} method.
-	 *
+	 *  Samples a patch of size N^d where d is the dimensionality of the source image src. 
+	 *  The input transformation maps the x- and y-axes to the axes of the sampling plane.
+	 *  It is typically determined by the {@link pickTransformation} method.
 	 *
 	 * @param basepos point
 	 * @param N size of a dimension of the output patch
@@ -905,6 +960,8 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		SimpleMatrix nullspace = svd.nullSpace();
 		return nullspace.getMatrix();
 	}
+	
+
 	
 	public static void testCombReplace(){
 		
