@@ -21,7 +21,7 @@ import net.imglib2.type.numeric.integer.AbstractIntegerType;
 import net.imglib2.type.numeric.real.FloatType;
 
 public class ImgUtil {
-<<<<<<< HEAD
+
 	public static <T extends NativeType<T>> void write(Img<T> img, String fn)
 	{
 		try
@@ -34,9 +34,6 @@ public class ImgUtil {
 			e.printStackTrace();
 		}
 	}
-	
-=======
->>>>>>> refs/remotes/origin/master
 	
 	public static <B extends AbstractIntegerType<B>> Img<FloatType> signedDistance(Img<B> mask){
 		
