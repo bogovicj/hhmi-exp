@@ -500,6 +500,29 @@ public class ArrayUtil {
 		}
 	}
 	
+	/**
+	 * Inserts all the elements of a source array into the destination array
+	 * where the starting index of 
+	 * 
+	 * @param dest destination array
+	 * @param src source array
+	 * @param i starting row position
+	 * @param j starting column position
+	 */
+	public static void insert( double[][] dest, double[][] src, int i, int j)
+	{
+		int ii=0, jj=0;
+		for( int r=i; r<i+src.length; r++)
+		{
+			for( int c=i; c<j+src[0].length; c++)
+			{
+				dest[r][c] = src[ii][jj];
+				jj++;
+			}
+			ii++;
+		}
+	}
+	
 	public static float[] concatenate(List<float[]> list){
 		int totlen = 0;
 		for(int i=0; i<list.size(); i++){
@@ -1514,13 +1537,16 @@ public class ArrayUtil {
 	}
 	
 	public static final String printArray(double[][] in){
+		return printArray(in, " ", "\n");
+	}
+	public static final String printArray(double[][] in, String colsep, String rowsep){
 		if(in==null) return "null";
 		String out = "";
 		for(int i=0; i<in.length; i++){
 			for(int j=0; j<in[0].length; j++){
-				out += in[i][j] +" ";
+				out += in[i][j] + colsep;
 			}
-			out +="\n";
+			out += rowsep;
 		}
 		return out;
 	}
