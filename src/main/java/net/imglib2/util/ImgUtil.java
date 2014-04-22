@@ -178,6 +178,36 @@ public class ImgUtil {
       }
    }
    
+
+   public static <T extends NativeType<T> & RealType<T>> Img<T> createEdgeImg(int[] sz, double[] w,  T t, double sigma){
+      ArrayImgFactory<T> factory = new ArrayImgFactory<T>();
+      Img<T> out = factory.create( sz, t);
+      
+      double[] ctr = ArrayUtil.toDouble(sz);
+      ArrayUtil.divide(ctr, 2);
+      
+      System.out.println(" ctr = " + ArrayUtil.printArray(ctr));
+      
+      Cursor<T> c = out.localizingCursor();
+      double[] pos = new double[3];
+      while(c.hasNext()){
+         T val = c.next();
+         c.localize(pos);
+         double[] pt = ArrayUtil.subtract(pos, ctr);
+         double[] res = ArrayUtil.multiply( w , pt);
+         val.setReal( 
+               sigmoid( ArrayUtil.sum(res), sigma )
+            );
+      }
+      
+      return out;
+   }
+   
+   public static double sigmoid(double x, double sigma)
+   {
+	   return (1 / (1 + Math.exp( - sigma * x )));
+   }
+   
    public static <T extends NativeType<T> & RealType<T>> Img<T> createGradientImg(int[] sz, double[] w, T t){
       ArrayImgFactory<T> factory = new ArrayImgFactory<T>();
       Img<T> out = factory.create( sz, t);
