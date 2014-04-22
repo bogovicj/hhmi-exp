@@ -59,7 +59,7 @@ import net.imglib2.util.Util;
  * @param <T> image type
  * @param <B> label type
  */
-public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerType<B>> {
+public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 
 	Img<T> img;
 	Img<B> mask;
@@ -101,6 +101,10 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 
 	}
 
+	public ArrayList<Edgel> getEdgels(){
+		return edgels;
+	}
+	
 	public void genImgChunks() {
 
 		if (imgChunks == null) {
@@ -111,9 +115,13 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 
 	public void computeEdgels() {
 
-		edgels = SubpixelEdgelDetection.getEdgels(mask, mask.factory(), 90.0f);
+		edgels = SubpixelEdgelDetection.getEdgels(mask, mask.factory(), 10.0f);
 		logger.info("num edgels " + edgels.size());
 
+	}
+	
+	public void setEdgels(ArrayList<Edgel> edgels){
+		this.edgels = edgels;
 	}
 
 	public void crackBoundaries() {
@@ -192,7 +200,7 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		return res;
 	}
 	
-	public <M extends RealType<M>> void distToMaskSDF( RandomAccessible<M> maskView, RandomAccessible<T> imgView, int[] patchSize, 
+	public <M extends RealType<M>> void maskToDepthSample( RandomAccessible<M> maskView, RandomAccessible<T> imgView, int[] patchSize, 
 			double thresh, boolean greaterThanThresh  )
 	{
 		
@@ -235,11 +243,11 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		double bckVal = (funcra.get()).getRealDouble();
 
 		funcra.localize(testpos);
-		logger.debug(" edgel patch position: " + ArrayUtil.printArray(testpos));
+		logger.trace(" edgel patch position: " + ArrayUtil.printArray(testpos));
 
-		logger.debug(" dist val at bck: " + bckVal );
-		logger.debug(" dist val at ctr: " + ctrVal );
-		logger.debug(" dist val at fwd: " + fwdVal );
+		logger.trace(" dist val at bck: " + bckVal );
+		logger.trace(" dist val at ctr: " + ctrVal );
+		logger.trace(" dist val at fwd: " + fwdVal );
 
 		boolean goFwd = false;
 		if( fwdVal < bckVal ){
@@ -266,13 +274,13 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 
 			curs.localize(debugPatchPos);
 
-			logger.debug(" patch pos: " + ArrayUtil.printArray(debugPatchPos));
+			logger.trace(" patch pos: " + ArrayUtil.printArray(debugPatchPos));
 
 			funcra.setPosition(curs);
 			funcra.setPosition(0, zdimIdx);
 
 			funcra.localize(debugDra);
-			logger.debug(" distra pos : " + ArrayUtil.printArray(debugDra));
+			logger.trace(" distra pos : " + ArrayUtil.printArray(debugDra));
 
 
 			dist = 1;
@@ -285,12 +293,12 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 				}
 
 				funcra.localize(debugDra);
-				logger.debug(" distra pos : " + ArrayUtil.printArray(debugDra));
+				logger.trace(" distra pos : " + ArrayUtil.printArray(debugDra));
 
 				d = (funcra.get()).getRealDouble(); 
 
 
-				logger.debug(" func val here " + d );
+				logger.trace(" func val here " + d );
 
 				if(greaterThanThresh){
 
@@ -320,17 +328,17 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 			curs.get().setReal( (destra.get()).getRealDouble() );
 			
 
-			break; // for debug only 
+//			break; // for debug only 
 			
 		}
 
-		logger.debug(" dist comp w normality: " + dist );
+		logger.trace(" dist comp w normality: " + dist );
 	}
 
 	public void computeCrackDepthNormal(Edgel edgel, int[] patchSize)
 	{
 	
-		 edgelToImage(edgel, img, patchSize);
+		 //edgelToImage(edgel, img, patchSize);
 		 
 		 		
 		 int ndims 	  = img.numDimensions();
@@ -374,7 +382,7 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 //		distToMaskSDF( distra, ra, patchSize, 0, true );
 		
 		
-		distToMaskSDF( mskEdgelView, imgEdgelView, patchSize, 128, false );
+		maskToDepthSample( mskEdgelView, imgEdgelView, patchSize, 128, false );
 		
 		
 	}
@@ -415,9 +423,9 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 	public Img<T> computeLocalCrackDepthDistFunc(Edgel edgel, int[] patchSize) {
 		logger.debug("computeLocalCrackDepthDistFunc");
 
-		ImgUtil.printNumNonZero(mask);
-		ArrayList<Integer> uniqueList = ImgUtil.uniqueInt(mask);
-		System.out.println("unique in mask:\n" + uniqueList);
+//		ImgUtil.printNumNonZero(mask);
+//		ArrayList<Integer> uniqueList = ImgUtil.uniqueInt(mask);
+//		System.out.println("unique in mask:\n" + uniqueList);
 
 		int[][][] maskInt = ImgUtil.toIntArray3d(mask);
 		boolean[][][] m = new boolean[maskInt.length][maskInt[0].length][maskInt[0][0].length];
@@ -443,48 +451,21 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 			e.printStackTrace();
 		}
 
-		int c = numLessThanZero(d1);
-		System.out.println(" count dist<=0 :" + c);
+//		int c =  ImgUtil.numLessThanZero(d1);
+//		System.out.println(" count dist<=0 :" + c);
 
 		Img<T> d1img = img.factory().create(img, img.firstElement());
 		ImgUtil.copyToImg(d1img, d1);
 
 		Img<T> depthPatch = edgelToImage(edgel, d1img, patchSize);
 
-		int cp = numLessThanZero(depthPatch);
-		System.out.println(" count patch dist<=0 :" + cp);
+//		int cp = ImgUtil.numLessThanZero(depthPatch);
+//		System.out.println(" count patch dist<=0 :" + cp);
 
 		return depthPatch;
 	}
 
-	private int numLessThanZero(Img<T> in) {
-		int count = 0;
-		Cursor<T> cursor = in.cursor();
 
-		while (cursor.hasNext()) {
-			if (cursor.next().getRealDouble() <= 0) {
-				count++;
-			}
-		}
-		return count;
-	}
-
-	private int numLessThanZero(float[][][] in) {
-		int nx = in.length;
-		int ny = in[0].length;
-		int nz = in[0][0].length;
-
-		int count = 0;
-
-		for (int x = 0; x < nx; x++)
-			for (int y = 0; y < ny; y++)
-				for (int z = 0; z < nz; z++) {
-					if (in[x][y][z] <= 0) {
-						count++;
-					}
-				}
-		return count;
-	}
 
 	public static void testCrackCorrPipeline() {
 
@@ -499,15 +480,15 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		//		String maskWSfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/Labels_ds_interp_cp_manPaint2.tif";
 		String maskWSfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/Labels_ds_interp_cp_manPaint3.tif";
 		
-		String depthPatchFn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/depthPatch_nrm.tif";
-		String imgPatchFn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/imgPatch_nrm.tif";
+		String depthPatchFn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/depthPatch_nrm";
+		String imgPatchFn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/imgPatch_nrm";
 		
 
 		String patchOut = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/patch";
 		String edgelPatchOut = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/edgel_patch";
 		String depthPatchOut = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/edgel_depthpatch";
 		
-		String edgelMaskOut = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/edgelMask.tif";
+		String edgelMaskPrefix = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/edgelMask";
 
 		//		ImagePlus imgip  = IJ.openImage(imgfn);
 		//		ImagePlus maskip = IJ.openImage(maskWSfn);
@@ -535,14 +516,15 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 
 		int[] N = new int[] { 19, 19, 7 };
 
-//				float[] tgtPos  = new float[]{ 66f, 290f, 13f };
-//				float[] tgtPos = new float[]{ 70f, 312f, 13f };
+//		float[] tgtPos  = new float[]{ 66f, 290f, 13f };
+//		float[] tgtPos = new float[]{ 70f, 312f, 13f };
 //		float[] tgtPos = new float[] { 139f, 227f, 13f };
 		float[] tgtPos = new float[] { 142, 221f, 16f };
 
 		int i = cc.edgelIdxNearest(tgtPos);
-
-		logger.debug("\nedgel idx: " + i);
+		String fnSuffix = "_"+i+".tif" ;
+		
+		logger.info("\nedgel idx: " + i);
 
 //		Img<FloatType> img1 = cc.edgelToImage(cc.edgels.get(i), img, N);
 //		Img<FloatType> depthPatch = cc.computeLocalCrackDepthDistFunc(
@@ -554,15 +536,14 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		
 		cc.computeCrackDepthNormal( cc.edgels.get(i), N );
 		
+		ImgUtil.write( cc.depthPatch, 		depthPatchFn + fnSuffix );
+		ImgUtil.write( cc.imgPatch, 		imgPatchFn + fnSuffix );
+		ImgUtil.write( cc.edgelPatchMasks, 	edgelMaskPrefix + fnSuffix );
 		
-//		ImgUtil.write( cc.depthPatch, depthPatchFn );
-//		ImgUtil.write( cc.imgPatch, imgPatchFn );
-//		ImgUtil.write( cc.edgelPatchMasks, edgelMaskOut );
 		
 
 //		try 
 //		{
-//			
 //			ImagePlus ipep = ImgUtil.toImagePlus( cc.edgelPatchMasks );
 //			IJ.save(ipep, edgelPatchOut + "_" + i + ".tif");
 //
@@ -782,6 +763,8 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		return rv;
 	}
 	
+	// Views.offset( img, 1, 0 0 )
+	
 	/**
 	 *  Samples a patch of size N^d where d is the dimensionality of the source image src. 
 	 *  The input transformation maps the x- and y-axes to the axes of the sampling plane.
@@ -940,6 +923,7 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 //		return out;
 //	}
 	
+	
 	/**
 	 *  Samples a patch of size N^d where d is the dimensionality of the 
 	 *  source image src. The input transformation maps the x- and y-axes 
@@ -953,8 +937,8 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 	 * @param src source image
 	 * @return 
 	 */
-	public static <L extends NumericType<L>> void setMask(double[] basepos, int[] patchSize,  
-			AffineTransform3D xfmIn,  Img<L> src, L val ){
+	public static <L extends NumericType<L>> void setMaskXfm(double[] basepos, int[] patchSize,  
+			AffineTransform3D xfmIn,  RandomAccessible<L> src, L val ){
 		
 		AffineTransform3D xfm = xfmIn.copy();
 		
@@ -994,6 +978,53 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 			
 			xfm.apply( pos, dpos);
 			int[] pt = ArrayUtil.toIntRound(dpos);
+			logger.trace(" pt :" + ArrayUtil.printArray( pt ) );
+			
+			ra.setPosition(pt);
+			ra.get().set(val);
+		}
+	}
+	
+	
+	/**
+	 *  Samples a patch of size N^d where d is the dimensionality of the 
+	 *  source image src. The input transformation maps the x- and y-axes 
+	 *  to the axes of the sampling plane and is typically determined by 
+	 *  the {@link pickTransformation} method.
+	 * 
+	 *
+	 * @param basepos point
+	 * @param N size of a dimension of the output patch
+	 * @param xfm transformation
+	 * @param src source image
+	 * @return 
+	 */
+	public static <L extends NumericType<L>> void setMask(double[] basepos, int[] patchSize,  
+			AffineTransform3D xfmIn,  RandomAccessible<L> src, L val ){
+		
+		AffineTransform3D xfm = xfmIn.copy();
+		
+		RandomAccess<L> ra = src.randomAccess();
+//		ra.setPosition(position);
+		
+		int ndims_in  = src.numDimensions();
+		
+		logger.debug(" basepos  :" + ArrayUtil.printArray( basepos ) );
+		logger.debug(" out size :" + ArrayUtil.printArray( patchSize ) );
+
+		double[]  pos	= new double[ndims_in];
+		double[] dpos	= new double[ndims_in];
+		
+
+		IntervalIterator iter = new IntervalIterator(patchSize);
+		while(iter.hasNext()){
+			
+			iter.fwd();
+			iter.localize(pos);
+			
+			xfm.apply( pos, dpos);
+			int[] pt = ArrayUtil.toIntRound(dpos);
+			logger.trace(" pt :" + ArrayUtil.printArray( pt ) );
 			
 			ra.setPosition(pt);
 			ra.get().set(val);
@@ -1028,7 +1059,7 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 	}
 
    /**
-	 * 
+	 * Replace this with a cross product if too slow..
 	 * @param in an M x N matrix whose rows span a subspace of R^N
 	 * @return an orthogonal basis for the subspace of R^N not spanned by in
 	 */
@@ -1070,7 +1101,6 @@ public class CrackCorrection<T extends RealType<T>, B extends AbstractIntegerTyp
 		ArrayList<Integer> uniqueSet = ImgUtil.uniqueInt(mask);
 		System.out.println("unique values: " + uniqueSet.size());
 		System.out.println("unique values:\n" + uniqueSet);
-		
 		
 		
 	}
