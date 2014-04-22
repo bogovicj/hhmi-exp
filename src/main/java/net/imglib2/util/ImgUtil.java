@@ -478,5 +478,34 @@ public class ImgUtil {
 			}
 		
 	}
+	
+	public <T extends RealType<T>> int numLessThanZero(Img<T> in) {
+		int count = 0;
+		Cursor<T> cursor = in.cursor();
+
+		while (cursor.hasNext()) {
+			if (cursor.next().getRealDouble() <= 0) {
+				count++;
+			}
+		}
+		return count;
+	}
+
+	public int numLessThanZero(float[][][] in) {
+		int nx = in.length;
+		int ny = in[0].length;
+		int nz = in[0][0].length;
+
+		int count = 0;
+
+		for (int x = 0; x < nx; x++)
+			for (int y = 0; y < ny; y++)
+				for (int z = 0; z < nz; z++) {
+					if (in[x][y][z] <= 0) {
+						count++;
+					}
+				}
+		return count;
+	}
 
 }
