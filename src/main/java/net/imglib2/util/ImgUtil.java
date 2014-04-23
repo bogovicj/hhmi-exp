@@ -9,7 +9,11 @@ import org.apache.log4j.Logger;
 import edu.jhu.ece.iacl.utility.ArrayUtil;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.ImageStack;
+import ij.process.ByteProcessor;
+import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
+import ij.process.ShortProcessor;
 import net.imglib2.Cursor;
 import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccess;
@@ -24,6 +28,12 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.Type;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.AbstractIntegerType;
+import net.imglib2.type.numeric.integer.ByteType;
+import net.imglib2.type.numeric.integer.GenericByteType;
+import net.imglib2.type.numeric.integer.GenericShortType;
+import net.imglib2.type.numeric.integer.IntType;
+import net.imglib2.type.numeric.integer.ShortType;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 
 public class ImgUtil {
@@ -34,7 +44,7 @@ public class ImgUtil {
 	{
 		try
 		{
-			ImagePlus ipdp = ImgUtil.toImagePlus( img );
+			ImagePlus ipdp = ImgUtil.copyToImagePlus(img).getImagePlus();
 			IJ.save(ipdp, fn);
 		}
 		catch(Exception e)
@@ -43,6 +53,201 @@ public class ImgUtil {
 		}
 	}
 	
+	public static void writeFloat(Img<FloatType> img, String fn)
+	{
+		try
+		{
+			ImagePlus ipdp = mimicImagePlusFloat( img, "name" );
+			
+			if(img.numDimensions()==2){
+				copyToImageProcessor2dFloat(img, ipdp.getProcessor());
+			}else if(img.numDimensions()==3){
+				copyToImageProcessor3dFloat(img, ipdp);
+			}
+			
+			IJ.save(ipdp, fn);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+	public static <T extends GenericByteType<T>> void writeByte(Img<T> img, String fn)
+	{
+		try
+		{
+			ImagePlus ipdp = mimicImagePlusByte( img, "name" );
+			if(img.numDimensions()==2){
+				copyToImageProcessor2dByte(img, ipdp.getProcessor());
+			}else if(img.numDimensions()==3){
+				copyToImageProcessor3dByte(img, ipdp);
+			}
+			IJ.save(ipdp, fn);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+	public static <T extends GenericShortType<T>> void writeShort(Img<T> img, String fn)
+	{
+		try
+		{
+			ImagePlus ipdp = mimicImagePlusShort( img, "name" );
+			if(img.numDimensions()==2){
+				copyToImageProcessor2dShort(img, ipdp.getProcessor());
+			}else if(img.numDimensions()==3){
+				copyToImageProcessor3dShort(img, ipdp);
+			}
+			IJ.save(ipdp, fn);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+	public static ImagePlus mimicImagePlusFloat(Img<FloatType> img, String name)
+	{
+		ImagePlus ip = null;
+		if(img.numDimensions()==2){
+			FloatProcessor fp = new FloatProcessor(
+					(int)img.dimension(0),(int)img.dimension(1));
+			ip = new ImagePlus(name, fp);
+			
+		}else if(img.numDimensions()==3){
+			
+			ImageStack stack = ImageStack.create(
+					(int)img.dimension(0),
+					(int)img.dimension(1),
+					(int)img.dimension(2),
+					32);
+			ip = new ImagePlus(name, stack);
+		}
+		
+		return ip;
+	}
+	public static <T extends GenericByteType<T>> ImagePlus mimicImagePlusByte(
+			Img<T> img, String name)
+	{
+		ImagePlus ip = null;
+		if(img.numDimensions()==2){
+			ByteProcessor fp = new ByteProcessor(
+					(int)img.dimension(0),(int)img.dimension(1));
+			ip = new ImagePlus(name, fp);
+			
+		}else if(img.numDimensions()==3){
+			
+			ImageStack stack = ImageStack.create(
+					(int)img.dimension(0),
+					(int)img.dimension(1),
+					(int)img.dimension(2),
+					8);
+			ip = new ImagePlus(name, stack);
+		}
+		
+		return ip;
+	}
+	public static <T extends GenericShortType<T>> ImagePlus mimicImagePlusShort(
+			Img<T> img, String name)
+	{
+		ImagePlus ip = null;
+		if(img.numDimensions()==2){
+			ByteProcessor fp = new ByteProcessor(
+					(int)img.dimension(0),(int)img.dimension(1));
+			ip = new ImagePlus(name, fp);
+			
+		}else if(img.numDimensions()==3){
+			
+			ImageStack stack = ImageStack.create(
+					(int)img.dimension(0),
+					(int)img.dimension(1),
+					(int)img.dimension(2),
+					16);
+			ip = new ImagePlus(name, stack);
+		}
+		
+		return ip;
+	}
+	
+	public static <T extends GenericByteType<T>> void copyToImageProcessor2dByte(Img<T> img, ImageProcessor ip) throws Exception {
+		
+		Cursor<T> c_in  = img.cursor();
+		
+		while(c_in.hasNext()){
+			c_in.fwd();
+			
+			ip.set(c_in.getIntPosition(0), c_in.getIntPosition(1), 
+					c_in.get().getInteger());
+			
+		}
+	}
+	public static <T extends GenericShortType<T>> void copyToImageProcessor2dShort(Img<T> img, ImageProcessor ip) throws Exception {
+		
+		Cursor<T> c_in  = img.cursor();
+		
+		while(c_in.hasNext()){
+			c_in.fwd();
+			
+			ip.set(c_in.getIntPosition(0), c_in.getIntPosition(1), 
+					c_in.get().getInteger());
+			
+		}
+	}
+	public static void copyToImageProcessor2dFloat(Img<FloatType> img, ImageProcessor ip) throws Exception {
+		
+		Cursor<FloatType> c_in  = img.cursor();
+		
+		while(c_in.hasNext()){
+			c_in.fwd();
+			
+			ip.setf(c_in.getIntPosition(0), c_in.getIntPosition(1), 
+					c_in.get().getRealFloat());
+			
+		}
+	}
+	
+	public static void copyToImageProcessor3dFloat(Img<FloatType> img, ImagePlus ip) throws Exception {
+		
+		Cursor<FloatType> c_in  = img.cursor();
+		
+		while(c_in.hasNext()){
+			c_in.fwd();
+			
+			ImageProcessor fp = ip.getStack().getProcessor(c_in.getIntPosition(2)+1);
+			
+			fp.setf(c_in.getIntPosition(0), c_in.getIntPosition(1), 
+					c_in.get().getRealFloat());
+			
+		}
+	}
+	public static <T extends GenericByteType<T>> void copyToImageProcessor3dByte(Img<T> img, ImagePlus ip) throws Exception {
+		
+		Cursor<T> c_in  = img.cursor();
+		
+		while(c_in.hasNext()){
+			c_in.fwd();
+			
+			ImageProcessor fp = ip.getStack().getProcessor(c_in.getIntPosition(2)+1);
+			
+			fp.set(c_in.getIntPosition(0), c_in.getIntPosition(1), 
+					c_in.get().getInteger());
+			
+		}
+	}
+	public static <T extends GenericShortType<T>> void copyToImageProcessor3dShort(Img<T> img, ImagePlus ip) throws Exception {
+		
+		Cursor<T> c_in  = img.cursor();
+		
+		while(c_in.hasNext()){
+			c_in.fwd();
+			
+			ImageProcessor fp = ip.getStack().getProcessor(c_in.getIntPosition(2)+1);
+			
+			fp.set(c_in.getIntPosition(0), c_in.getIntPosition(1), 
+					c_in.get().getInteger());
+			
+		}
+	}
 	public static <B extends AbstractIntegerType<B>> Img<FloatType> signedDistance(Img<B> mask){
 		
 		DistanceMap<B> dm = new DistanceMap<B>();
@@ -104,6 +309,7 @@ public class ImgUtil {
 		return num;
 	}
 	
+
 	public static <S extends RealType<S>> void printCoordNonZero(Img<S> img){
 		Cursor<S> c = img.cursor();
 		int num = 0;
@@ -359,6 +565,8 @@ public class ImgUtil {
          ra.get().set(c_in.get());
 
       }
+      
+//      logger.debug("output ip has " + ImgUtil.numNonZero(ipImg) +  " non zero values");
 
       return ipImg;
 
