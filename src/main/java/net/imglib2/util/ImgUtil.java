@@ -3,12 +3,18 @@ package net.imglib2.util;
 import java.util.ArrayList;
 import java.util.HashSet;
 
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
+
 import edu.jhu.ece.iacl.utility.ArrayUtil;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
 import net.imglib2.Cursor;
+import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccess;
+import net.imglib2.RandomAccessible;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImg;
@@ -22,6 +28,8 @@ import net.imglib2.type.numeric.real.FloatType;
 
 public class ImgUtil {
 
+	public static Logger logger = LogManager.getLogger(ImgUtil.class.getName());
+	
 	public static <T extends NativeType<T>> void write(Img<T> img, String fn)
 	{
 		try
@@ -43,14 +51,14 @@ public class ImgUtil {
 		Img<FloatType> sdfi = ffactory.create(mask, new FloatType());
 		
 		
-		ImgUtil.printNumNonZero(mask);
+//		ImgUtil.numNonZero(mask);
 		
 		// inside region
 		dm.compute(mask, sdf);
 		
 		// negate mask
 		Img<B> maskInv = ImgUtil.thresholdMap(mask, 1, false);
-		ImgUtil.printNumNonZero(maskInv);
+//		ImgUtil.numNonZero(maskInv);
 		
 		// oustide region
 		dm.compute(maskInv, sdfi);
@@ -83,12 +91,29 @@ public class ImgUtil {
 		}
 	}
 	
-	public static <S extends RealType<S>> void printNumNonZero(Img<S> img){
+	public static <S extends RealType<S>> int numNonZero(Img<S> img){
 		Cursor<S> c = img.cursor();
 		int num = 0;
 		while(c.hasNext()){
 			S val = c.next();
 			if( val.getRealDouble() != 0 ){
+				num++;
+			}
+		}
+//		System.out.println(img + " nnz: " + num );
+		return num;
+	}
+	
+	public static <S extends RealType<S>> void printCoordNonZero(Img<S> img){
+		Cursor<S> c = img.cursor();
+		int num = 0;
+		int[] pos = new int[img.numDimensions()];
+				
+		while(c.hasNext()){
+			S val = c.next();
+			if( val.getRealDouble() != 0 ){
+				c.localize(pos);
+				System.out.println(" val of : " + val + " at: " + ArrayUtil.printArray(pos));
 				num++;
 			}
 		}
@@ -319,14 +344,14 @@ public class ImgUtil {
 
 
       ImagePlusImgFactory<T> factory = new ImagePlusImgFactory<T>();
-      ImagePlusImg<T, ?> ipImg = factory.create(img, img.firstElement());
+      T t = img.randomAccess().get();
+      ImagePlusImg<T, ?> ipImg = factory.create(img,t);
 
-      System.out.println("create image plus of type: " + img.firstElement().getClass());
-      System.out.println("result is of type: " + ipImg.firstElement().getClass());
+      logger.debug("create image plus of type: " + t.getClass());
+      logger.debug("result is of type: " + ipImg.firstElement().getClass());
 
-
-      Cursor<T> c_in  = img.cursor();
-      RandomAccess<T> ra = ipImg.randomAccess();
+      Cursor<T> c_in  = ipImg.cursor();
+      RandomAccess<T> ra = img.randomAccess();
 
       while(c_in.hasNext()){
          c_in.fwd();
@@ -338,6 +363,46 @@ public class ImgUtil {
       return ipImg;
 
    }
+   
+   public static < T extends NativeType< T >> void copyInto(
+		   RandomAccessible<T> src, 
+		   IterableInterval<T> dest)
+   {
+	   Cursor<T> c_in  = dest.cursor();
+	   RandomAccess<T> ra = src.randomAccess();
+
+	   while(c_in.hasNext()){
+		   c_in.fwd();
+		   ra.setPosition(c_in);
+		   ra.get().set(c_in.get());
+	   }
+   }
+   
+   public static < T extends NativeType< T >> ImagePlusImg<T, ?> copyToImagePlus(
+		   		RandomAccessible<T> img,
+		   		IterableInterval<?> interval
+		   ) throws Exception {
+
+
+	      ImagePlusImgFactory<T> factory = new ImagePlusImgFactory<T>();
+	      T t = img.randomAccess().get();
+	      ImagePlusImg<T, ?> ipImg = factory.create(interval,t);
+
+	      logger.debug("create image plus of type: " + t.getClass());
+	      logger.debug("result is of type: " + ipImg.firstElement().getClass());
+
+	      Cursor<T> c_in  = ipImg.cursor();
+	      RandomAccess<T> ra = img.randomAccess();
+
+	      while(c_in.hasNext()){
+	         c_in.fwd();
+	         ra.setPosition(c_in);
+	         ra.get().set(c_in.get());
+	      }
+
+	      return ipImg;
+
+	   }
 
    public static < T extends NativeType< T >> ImagePlus toImagePlus(Img<T> img) throws Exception{                 
       return copyToImagePlus(img).getImagePlus();
