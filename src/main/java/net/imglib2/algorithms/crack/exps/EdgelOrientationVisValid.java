@@ -13,6 +13,7 @@ import net.imglib2.RandomAccess;
 import net.imglib2.algorithm.edge.Edgel;
 import net.imglib2.algorithm.edge.SubpixelEdgelDetection;
 import net.imglib2.algorithms.crack.CrackCorrection;
+import net.imglib2.algorithms.edge.EdgelTools;
 import net.imglib2.exception.ImgLibException;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
@@ -48,7 +49,7 @@ public class EdgelOrientationVisValid {
 		ArrayImgFactory<FloatType> ffactory = new ArrayImgFactory<FloatType>();
 		
 		int[] patchSize = new int[]{7,7,3};
-		int[] patchMidPt = CrackCorrection.patchSizeToMidpt(patchSize);
+		int[] patchMidPt = EdgelTools.patchSizeToMidpt(patchSize);
 		
 
 		Img<FloatType> img = null;
@@ -94,7 +95,7 @@ public class EdgelOrientationVisValid {
 //			CrackCorrection.edgelToView(edgel, edgelmaskimg, patchSize);
 			
 			
-			AffineTransform3D xfmIn = CrackCorrection.edgelToXfm(edgel, patchMidPt);
+			AffineTransform3D xfmIn = EdgelTools.edgelToXfm(edgel, patchMidPt);
 			
 			CrackCorrection.setMask( ArrayUtil.toDouble(edgel.getPosition()), 
 					patchSize, xfmIn, 
@@ -147,7 +148,7 @@ public class EdgelOrientationVisValid {
 		ArrayImgFactory<FloatType> ffactory = new ArrayImgFactory<FloatType>();
 		
 		int[] patchSize = new int[]{7,7,3};
-		int[] patchMidPt = CrackCorrection.patchSizeToMidpt(patchSize);
+		int[] patchMidPt = EdgelTools.patchSizeToMidpt(patchSize);
 		
 		Img<FloatType> img = null;
 //		Img<UnsignedByteType> mask = null;
@@ -198,7 +199,7 @@ public class EdgelOrientationVisValid {
 		ArrayImgFactory<FloatType> ffactory = new ArrayImgFactory<FloatType>();
 		
 		int[] patchSize = new int[]{7,7,3};
-		int[] patchMidPt = CrackCorrection.patchSizeToMidpt(patchSize);
+		int[] patchMidPt = EdgelTools.patchSizeToMidpt(patchSize);
 		
 		Img<FloatType> mask = null;
 //		Img<UnsignedByteType> mask = null;
@@ -222,7 +223,7 @@ public class EdgelOrientationVisValid {
 		float[] pos = new float[]{206,137,9};
 
 		
-//		ImgUtil.write(mask, crackMaskRewriteFn);
+		ImgUtil.write(mask, crackMaskRewriteFn);
 		CrackCorrection cc = new CrackCorrection();
 		cc.setEdgels(edgels);
 		
@@ -269,7 +270,7 @@ public class EdgelOrientationVisValid {
 		int i = 0;
 		
 		int[] patchSize = new int[]{7,7,3};
-		int[] patchMidPt = CrackCorrection.patchSizeToMidpt(patchSize);
+		int[] patchMidPt = EdgelTools.patchSizeToMidpt(patchSize);
 		
 		while(i < N){
 			
@@ -283,7 +284,7 @@ public class EdgelOrientationVisValid {
 //			CrackCorrection.edgelToView(edgel, edgelmaskimg, patchSize);
 			
 			
-			AffineTransform3D xfmIn = CrackCorrection.edgelToXfm(edgel, patchMidPt);
+			AffineTransform3D xfmIn = EdgelTools.edgelToXfm(edgel, patchMidPt);
 			
 			CrackCorrection.setMask( ArrayUtil.toDouble(edgel.getPosition()), 
 					patchSize, xfmIn, 

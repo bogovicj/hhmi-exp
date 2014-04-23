@@ -19,6 +19,7 @@ import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.*;
 import net.imglib2.algorithm.edge.*;
+import net.imglib2.algorithms.edge.EdgelTools;
 import net.imglib2.algorithms.geometry.RodriguesRotation;
 import net.imglib2.algorithms.moments.ImgMoment;
 import net.imglib2.img.*;
@@ -34,6 +35,7 @@ import net.imglib2.realtransform.RealTransformRandomAccessible;
 import net.imglib2.realtransform.RealTransformRandomAccessible.RealTransformRandomAccess;
 import net.imglib2.realtransform.RealTransformRealRandomAccessible.RealTransformRealRandomAccess;
 import net.imglib2.realtransform.RealViews;
+import net.imglib2.type.Type;
 import net.imglib2.type.numeric.*;
 import net.imglib2.type.numeric.integer.*;
 import net.imglib2.type.numeric.real.*;
@@ -64,8 +66,8 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 	Img<T> img;
 	Img<B> mask;
 
-	Img<ByteType> edgelPatchMasks;
-	byte b = 1;
+	Img<UnsignedByteType> edgelPatchMasks;
+	int b = 255;
 
 	RealRandomAccess<T> interpRa;
 
@@ -96,8 +98,8 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 
 		interpRa = interpolant.realRandomAccess();
 
-		ArrayImgFactory<ByteType> bfactory = new ArrayImgFactory<ByteType>();
-		edgelPatchMasks = bfactory.create(img, new ByteType());
+		ArrayImgFactory<UnsignedByteType> bfactory = new ArrayImgFactory<UnsignedByteType>();
+		edgelPatchMasks = bfactory.create(img, new UnsignedByteType());
 
 	}
 
@@ -163,22 +165,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		return i;
 	}
 	
-	/**
-	 * Returns the integer coordinate of the midpoint of a patch
-	 * with the specified size.  Is only accurate for patches
-	 * with an odd size in every dimension.
-	 * 
-	 * @param patchSize size of the patch
-	 * @return the midpoint coordinate
-	 */
-	public static int[] patchSizeToMidpt(int[] patchSize){ // determine translation
 
-		int[] midPt = ArrayUtil.clone(patchSize);
-		ArrayUtil.addInPlace(midPt, -1);
-		ArrayUtil.divide(midPt, 2);
-
-		return midPt;
-	}
 	
 	public Img<T> edgelToImage(Edgel edgel, Img<T> src, int[] patchSize) {
 
@@ -186,13 +173,16 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
 		logger.info(" edgel mag : " + edgel.getMagnitude());
 
-		AffineTransform3D xfm = pickTransformation(edgel);
+		int[] midPt = EdgelTools.patchSizeToMidpt(patchSize);
+		
+//		AffineTransform3D xfm = pickTransformation(edgel);
+		AffineTransform3D xfm = EdgelTools.edgelToXfm(edgel, midPt);
 		Img<T> res = normalPatch(ArrayUtil.toDouble(edgel.getPosition()),
 				patchSize, xfm, src);
 
 		CrackCorrection.setMask(ArrayUtil.toDouble(edgel.getPosition()),
-				patchSize, xfm, edgelPatchMasks, new ByteType(b));
-		b++;
+				patchSize, xfm, edgelPatchMasks, new UnsignedByteType(b));
+		b--;
 
 		ImgUtil.printNumNonZero(this.edgelPatchMasks);
 		//		System.out.println("nnz edgelPatch: " + );
@@ -200,12 +190,13 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		return res;
 	}
 	
-	public <M extends RealType<M>> void maskToDepthSample( RandomAccessible<M> maskView, RandomAccessible<T> imgView, int[] patchSize, 
+	
+	
+	public <M extends RealType<M>> void maskToDepthSample( RandomAccessible<M> maskView, int[] patchSize, 
 			double thresh, boolean greaterThanThresh  )
 	{
 		
 		RandomAccess<M> funcra = maskView.randomAccess();
-		RandomAccess<T> destra = imgView.randomAccess();
 		
 		int ndims 	  = img.numDimensions();
 		int ndims_out = patchSize.length;
@@ -221,7 +212,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 			}
 		}
 
-		int[] midPt = patchSizeToMidpt(patchSizeAug);
+		int[] midPt = EdgelTools.patchSizeToMidpt(patchSizeAug);
 		funcra.setPosition(midPt);
 
 		double[] testpos = new double[3];
@@ -265,18 +256,15 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 
 		double d = -1;
 		double dist = 1;
-		Cursor<T> curs          = imgPatch.cursor();
 		Cursor<FloatType> dcurs = depthPatch.cursor();
-		while(curs.hasNext())
+		while(dcurs.hasNext())
 		{
-			curs.fwd();
 			dcurs.fwd();
 
-			curs.localize(debugPatchPos);
 
 			logger.trace(" patch pos: " + ArrayUtil.printArray(debugPatchPos));
 
-			funcra.setPosition(curs);
+			funcra.setPosition(dcurs);
 			funcra.setPosition(0, zdimIdx);
 
 			funcra.localize(debugDra);
@@ -323,22 +311,28 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 			// set depth
 			dcurs.get().setReal(dist);
 
-			// set image
-			destra.setPosition(funcra);
-			curs.get().setReal( (destra.get()).getRealDouble() );
-			
-
 //			break; // for debug only 
 			
 		}
 
 		logger.trace(" dist comp w normality: " + dist );
 	}
+	
+	public static <T extends Type<T>> void copyViewToImage(RandomAccessible<T> view, Img<T> dest){
+		Cursor<T> curs          = dest.cursor();
+		RandomAccess<T> srcRa = view.randomAccess();
+		while(curs.hasNext())
+		{
+			curs.fwd();
+			srcRa.setPosition(curs);
+			curs.get().set(curs.get());
+		}
+	}
 
 	public void computeCrackDepthNormal(Edgel edgel, int[] patchSize)
 	{
 	
-		 //edgelToImage(edgel, img, patchSize);
+		 edgelToImage(edgel, img, patchSize);
 		 
 		 		
 		 int ndims 	  = img.numDimensions();
@@ -371,8 +365,8 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 //		patchSizeWChan[patchSize.length] = nChannels;
 		
 		
-		RealTransformRandomAccessible<T,?> imgEdgelView = edgelToView( edgel, img, patchSizeAug );
-		RealTransformRandomAccessible<B,?> mskEdgelView = edgelToView( edgel, mask, patchSizeAug );
+		RealTransformRandomAccessible<T,?> imgEdgelView = EdgelTools.edgelToView( edgel, img, patchSizeAug );
+		RealTransformRandomAccessible<B,?> mskEdgelView = EdgelTools.edgelToView( edgel, mask, patchSizeAug );
 //		RandomAccess<T> ra = rtra.randomAccess();
 
 //		Img<FloatType> maskDist = ImgUtil.signedDistance(mask);
@@ -381,11 +375,12 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 //		RandomAccess<FloatType> distra = distrtra.randomAccess();
 //		distToMaskSDF( distra, ra, patchSize, 0, true );
 		
-		
-		maskToDepthSample( mskEdgelView, imgEdgelView, patchSize, 128, false );
-		
+//		copyViewToImage(imgEdgelView, imgPatch );
+		maskToDepthSample( mskEdgelView, patchSize, 128, false );
 		
 	}
+	
+	
 	
 	public Img<FloatType> compMaskDistMgdm()
 	{
@@ -500,16 +495,18 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		ArrayImgFactory<FloatType> ffactory = new ArrayImgFactory<FloatType>();
 
 		Img<FloatType> img = null;
-		Img<UnsignedByteType> mask = null;
-		try {
-			img = new ImgOpener().openImg(imgfn, ffactory, new FloatType());
-			mask = new ImgOpener().openImg(maskfn, ubfactory,
-					new UnsignedByteType());
-		} catch (ImgIOException e) {
+		Img<FloatType> mask = null;
+		try 
+		{
+			img = new ImgOpener().openImg(  imgfn,  ffactory, new FloatType());
+			mask = new ImgOpener().openImg(maskfn,  ffactory, new FloatType());
+		} 
+		catch (ImgIOException e) 
+		{
 			e.printStackTrace();
 		}
 
-		CrackCorrection<FloatType, UnsignedByteType> cc = new CrackCorrection<FloatType, UnsignedByteType>(
+		CrackCorrection<FloatType, FloatType> cc = new CrackCorrection<FloatType, FloatType>(
 				img, mask);
 
 		cc.computeEdgels();
@@ -526,13 +523,6 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		
 		logger.info("\nedgel idx: " + i);
 
-//		Img<FloatType> img1 = cc.edgelToImage(cc.edgels.get(i), img, N);
-//		Img<FloatType> depthPatch = cc.computeLocalCrackDepthDistFunc(
-//				cc.edgels.get(i), N);
-//		ip1 = ImgUtil.toImagePlus(img1);
-//		IJ.save(ip1, patchOut + "_" + i + ".tif");
-//		ImagePlus ipdp = ImgUtil.toImagePlus( depthPatch );
-//		IJ.save(ipdp, depthPatchOut + "_" + i + ".tif");
 		
 		cc.computeCrackDepthNormal( cc.edgels.get(i), N );
 		
@@ -540,19 +530,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		ImgUtil.write( cc.imgPatch, 		imgPatchFn + fnSuffix );
 		ImgUtil.write( cc.edgelPatchMasks, 	edgelMaskPrefix + fnSuffix );
 		
-		
 
-//		try 
-//		{
-//			ImagePlus ipep = ImgUtil.toImagePlus( cc.edgelPatchMasks );
-//			IJ.save(ipep, edgelPatchOut + "_" + i + ".tif");
-//
-//		} 
-//		catch (Exception e) 
-//		{
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
 	}
 
 	public static void testDistanceBasedCrackSideComp() {
@@ -698,7 +676,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		System.out.println(" value at: (" + ArrayUtil.printArray(pos) + "): "
 				+ val);
 
-		AffineTransform3D xfm = pickTransformation(edgel);
+		AffineTransform3D xfm = EdgelTools.edgelTransformation(edgel);
 
 		int[] N = new int[] { 5, 5, 3 };
 		Img<FloatType> resImg = normalPatch(pos, N, xfm, testImg);
@@ -707,61 +685,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 
 	}
 
-	public static AffineTransform3D edgelToXfm(Edgel edgel, int[] midPt)
-	{
-		AffineTransform3D rotXfm = CrackCorrection.pickTransformation(edgel);
-		
-		/******************************/
-		AffineTransform3D xfm = rotXfm.copy();
 
-		int ndims_in = midPt.length;
-		double[] target = new double[ndims_in];
-
-
-		xfm.apply( ArrayUtil.toDouble(midPt), target );
-		double[] diff = ArrayUtil.subtract(
-				ArrayUtil.toDouble(edgel.getPosition()), target);
-
-		for (int i = 0; i < ndims_in; i++) {
-			xfm.set(diff[i], i, ndims_in);
-		}
-		/******************************/
-		
-		return xfm;	
-	}
-
-	
-	/**
-	 * Returns a transformed view of the input source image relative to an edgel.
-	 * The {@link Edgel} position will map to the midpoint the output patch.
-	 * The +z axis of the output view corresponds to the gradient direction of 
-	 * the edgel.
-	 * 
-	 * @param edgel the edgel
-	 * @param src the source image
-	 * @param patchSize the patch size
-	 * @return the transformed view into the source image
-	 */
-	public static <T extends RealType<T>> RealTransformRandomAccessible<T,InverseRealTransform> edgelToView(Edgel edgel, Img<T> src, int[] patchSize) 
-	{
-		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
-		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
-		logger.info(" edgel mag : " + edgel.getMagnitude());
-		
-		int[] midPt = patchSizeToMidpt( patchSize ); 	
-		AffineTransform3D xfm = edgelToXfm(edgel, midPt);
-
-
-		NLinearInterpolatorFactory<T> interpFactory = new NLinearInterpolatorFactory<T>();
-
-		RealRandomAccessible<T> interpolant = Views.interpolate(
-				Views.extendMirrorSingle(src), interpFactory);
-
-		RealTransformRandomAccessible<T, InverseRealTransform> rv = 
-				RealViews.transform( interpolant, xfm.inverse() );
-		
-		return rv;
-	}
 	
 	// Views.offset( img, 1, 0 0 )
 	
@@ -1031,43 +955,9 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		}
 	}
 	
-	public static AffineTransform3D pickTransformation(Edgel edgel){
 	
-		float[] nrm = edgel.getGradient();
-		
-		DenseMatrix64F normMtx = new DenseMatrix64F( new double[][]{ ArrayUtil.toDouble(nrm) } );
-		DenseMatrix64F remMtx = remainderSubspace(normMtx);
-		logger.debug("rem Mtx: " + remMtx );
-		
-		double[][] Ra = new double[3][4];
-		for(int i=0; i<3; i++){
-			for(int j=0; j<2; j++){
-				Ra[i][j] = remMtx.get( i, j );
-			}
-			Ra[i][2] = normMtx.get(i);
-		}
-		
-		logger.info(" Ra: \n" + ArrayUtil.printArray(Ra) );
-		
-		AffineTransform3D R = new AffineTransform3D();
-		R.set(Ra);
-		
-//		AffineTransform3D R = RodriguesRotation.rotation(
-//		new double[]{0,0,1}, ArrayUtil.toDouble(nrm));
-		
-		return R;
-	}
 
-   /**
-	 * Replace this with a cross product if too slow..
-	 * @param in an M x N matrix whose rows span a subspace of R^N
-	 * @return an orthogonal basis for the subspace of R^N not spanned by in
-	 */
-	public static DenseMatrix64F remainderSubspace(DenseMatrix64F in){
-		SimpleSVD<SimpleMatrix> svd = new SimpleSVD<SimpleMatrix>(in,false);
-		SimpleMatrix nullspace = svd.nullSpace();
-		return nullspace.getMatrix();
-	}
+
 	
 
 	
