@@ -18,17 +18,18 @@ import net.imglib2.algorithms.moments.ImgMoment;
 import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.img.*;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.io.ImgIOException;
-import net.imglib2.io.ImgOpener;
 import net.imglib2.iterator.IntervalIterator;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
-
+import net.imglib2.type.NativeType;
 import net.imglib2.type.Type;
 import net.imglib2.type.numeric.*;
 import net.imglib2.type.numeric.integer.*;
 import net.imglib2.type.numeric.real.*;
 import net.imglib2.view.Views;
+import net.imglib2.view.composite.CompositeIntervalView;
+import net.imglib2.view.composite.GenericComposite;
 import net.imglib2.util.ImgUtil;
 import net.imglib2.util.Util;
 
@@ -48,7 +49,7 @@ import net.imglib2.util.Util;
  * @param <T> image type
  * @param <B> label type
  */
-public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
+public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends RealType<B>> {
 
 	Img<T> img;
 	Img<B> mask;
@@ -64,6 +65,8 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 	Img<T> imgPatch;
 
 	Img<B> imgChunks;
+	
+	int[] patchSize;
 
 	private int maxNumNormalSteps = 30;
 	
@@ -73,7 +76,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 	public CrackCorrection() {
 	}
 
-	public CrackCorrection(Img<T> img, Img<B> mask) {
+	public CrackCorrection(Img<T> img, Img<B> mask, int[] patchSize) {
 		this.img = img;
 		this.mask = mask;
 
@@ -86,6 +89,14 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 
 		ArrayImgFactory<UnsignedByteType> bfactory = new ArrayImgFactory<UnsignedByteType>();
 		edgelPatchMasks = bfactory.create(img, new UnsignedByteType());
+		
+		this.patchSize = patchSize;
+		
+		ArrayImgFactory<T> factory = new ArrayImgFactory<T>();
+		imgPatch = factory.create(patchSize, img.firstElement());
+		
+		ArrayImgFactory<FloatType> fltfactory = new ArrayImgFactory<FloatType>();
+		depthPatch = fltfactory.create(patchSize, new FloatType());
 
 	}
 
@@ -153,7 +164,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 	
 
 	
-	public Img<T> edgelToImage(Edgel edgel, Img<T> src, int[] patchSize) {
+	public Img<T> edgelToImageOld(Edgel edgel, Img<T> src, int[] patchSize) {
 
 		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
 		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
@@ -166,17 +177,20 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		Img<T> res = normalPatch(ArrayUtil.toDouble(edgel.getPosition()),
 				patchSize, xfm, src);
 
-		CrackCorrection.setMask(ArrayUtil.toDouble(edgel.getPosition()),
-				patchSize, xfm, edgelPatchMasks, new UnsignedByteType(b));
-		b--;
-
-		
-	    System.out.println("nnz edgelPatch: " + ImgUtil.numNonZero(this.edgelPatchMasks));
 
 		return res;
 	}
 	
-	
+	public void edgelToImage(Edgel edgel, Img<T> src, int[] patchSize) {
+
+		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
+		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
+		logger.info(" edgel mag : " + edgel.getMagnitude());
+
+		RealTransformRandomAccessible<T, InverseRealTransform> view = EdgelTools.edgelToView(edgel, src, patchSize);
+		ImgUtil.copyInto(view, imgPatch);
+		
+	}
 	
 	public <M extends RealType<M>> void maskToDepthSample( RandomAccessible<M> maskView, int[] patchSize, 
 			double thresh, boolean greaterThanThresh  )
@@ -375,7 +389,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		
 	}
 	
-	public void computeCrackDepthNormalMask(Edgel edgel, int[] patchSize)
+	public void computeCrackDepthNormalMask(Edgel edgel )
 	{
 		int ndims 	  = img.numDimensions();
 		int ndims_out = patchSize.length;
@@ -398,10 +412,13 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 			depthPatch = ffactory.create(patchSize, new FloatType());
 		}
 		
-		RealTransformRandomAccessible<T,?> imgEdgelView = EdgelTools.edgelToView( edgel, img, patchSizeAug );
-		RealTransformRandomAccessible<B,?> mskEdgelView = EdgelTools.edgelToView( edgel, mask, patchSizeAug );
 		
-//		Views.interval(randomAccessible, interval)
+		RealTransformRandomAccessible<B,?> mskEdgelView = EdgelTools.edgelToView( edgel, mask, patchSizeAug );
+		IntervalIterator itvl = new IntervalIterator( new long[ndims], ArrayUtil.toLong(patchSize) );
+		
+		CompositeIntervalView<FloatType, ? extends GenericComposite<FloatType>> itvl2d = Views.collapse(depthPatch);
+		
+		
 	}
 	
 	public Img<FloatType> compMaskDistMgdm()
@@ -437,7 +454,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		return distXfmImg;
 	}
 
-	public Img<T> computeLocalCrackDepthDistFunc(Edgel edgel, int[] patchSize) {
+	public void computeLocalCrackDepthDistFunc(Edgel edgel, int[] patchSize) {
 		logger.debug("computeLocalCrackDepthDistFunc");
 
 //		ImgUtil.printNumNonZero(mask);
@@ -474,12 +491,13 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		Img<T> d1img = img.factory().create(img, img.firstElement());
 		ImgUtil.copyToImg(d1img, d1);
 
-		Img<T> depthPatch = edgelToImage(edgel, d1img, patchSize);
+//		Img<T> depthPatch = 
+		edgelToImage(edgel, d1img, patchSize);
 
 //		int cp = ImgUtil.numLessThanZero(depthPatch);
 //		System.out.println(" count patch dist<=0 :" + cp);
 
-		return depthPatch;
+//		return depthPatch;
 	}
 
 
@@ -516,25 +534,16 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		ArrayImgFactory<UnsignedByteType> ubfactory = new ArrayImgFactory<UnsignedByteType>();
 		ArrayImgFactory<FloatType> ffactory = new ArrayImgFactory<FloatType>();
 
-		Img<FloatType> img = null;
-		Img<FloatType> mask = null;
-		try 
-		{
-			img = new ImgOpener().openImg(  imgfn,  ffactory, new FloatType());
-			mask = new ImgOpener().openImg(maskfn,  ffactory, new FloatType());
-		} 
-		catch (ImgIOException e) 
-		{
-			e.printStackTrace();
-		}
+		Img<FloatType> img =  ImagePlusAdapter.convertFloat( IJ.openImage(imgfn) );
+		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );
 
+		int[] patchSize = new int[] { 19, 19, 7 };
 		CrackCorrection<FloatType, FloatType> cc = new CrackCorrection<FloatType, FloatType>(
-				img, mask);
+				img, mask, patchSize);
 
 		cc.computeEdgels();
 
-		int[] patchSize = new int[] { 19, 19, 7 };
-
+		
 //		float[] tgtPos  = new float[]{ 66f, 290f, 13f };
 //		float[] tgtPos = new float[]{ 70f, 312f, 13f };
 //		float[] tgtPos = new float[] { 139f, 227f, 13f };
@@ -546,12 +555,17 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		logger.info("\nedgel idx: " + i);
 
 		
-//		cc.computeCrackDepthNormal( cc.edgels.get(i), N );
-		cc.setEdgelMask( cc.edgels.get(i), patchSize);
+		cc.computeCrackDepthNormalMask( cc.edgels.get(i) );
+		
+//		
+//		cc.setEdgelMask( cc.edgels.get(i), patchSize);
+//		ImgUtil.writeByte( cc.edgelPatchMasks, 	edgelMaskPrefix + fnSuffix );
+//		
+//		cc.edgelToImage( cc.edgels.get(i), img, patchSize);
+//		ImgUtil.writeFloat( cc.imgPatch, 		imgPatchFn + fnSuffix );
+		
 		
 //		ImgUtil.writeFloat( cc.depthPatch, 		depthPatchFn + fnSuffix );
-//		ImgUtil.writeFloat( cc.imgPatch, 		imgPatchFn + fnSuffix );
-		ImgUtil.writeByte( cc.edgelPatchMasks, 	edgelMaskPrefix + fnSuffix );
 		
 
 	}
@@ -579,9 +593,9 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 
 		//		System.out.println("img " + img);
 		//		System.out.println("mask " + mask);
-
+		int[] patchSize = new int[] { 19, 19, 7 };
 		CrackCorrection<FloatType, UnsignedByteType> cc = new CrackCorrection<FloatType, UnsignedByteType>(
-				img, mask);
+				img, mask, patchSize);
 
 		//cc.computeEdgels();
 		//cc.crackBoundaries();
@@ -645,9 +659,10 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		//Img<FloatType> testImg = ImgUtil.createGradientImgY( 20, 20, 20, new FloatType() );
 		Img<FloatType> testImg = ImgUtil.createGradientImgZ(20, 20, 20,
 				new FloatType());
-
+		
+		int[] patchSize = new int[] { 5, 5, 3 };
 		CrackCorrection<FloatType, UnsignedByteType> cc = new CrackCorrection<FloatType, UnsignedByteType>(
-				testImg, null);
+				testImg, null, patchSize);
 
 		//float[] norm = new float[]{ 1.0f, 1.0f, 0.0f };
 		float[] norm = new float[] { 0.0f, 0.0f, 1.0f };
@@ -658,8 +673,9 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 
 		Edgel edgel = new Edgel(new float[] { 10.5f, 10.5f, 10.5f }, norm, 1);
 
-		int[] patchSize = new int[] { 5, 5, 3 };
-		Img<FloatType> resImg = cc.edgelToImage(edgel, testImg, patchSize);
+		
+		 
+		cc.edgelToImage(edgel, testImg, patchSize);
 
 		//ImageJFunctions.show(resImg);
 
@@ -1062,7 +1078,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 //		
 //		
 //	}
-//	
+
 	   
 	public static void main(String[] args){
 
