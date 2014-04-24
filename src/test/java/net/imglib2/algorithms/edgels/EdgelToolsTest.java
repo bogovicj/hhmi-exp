@@ -82,33 +82,53 @@ public class EdgelToolsTest {
 		assertEquals(" xfm (0,0,-1) y", expectMidMinusZ[1], res[1], tol );
 		assertEquals(" xfm (0,0,-1) z", expectMidMinusZ[2], res[2], tol );
 		
-		// test view
-		Img<FloatType> img = ImgUtil.createGradientImgY(32, 32, 32, new FloatType());
-		RealTransformRandomAccessible<FloatType, InverseRealTransform> view = EdgelTools.edgelToView(e, img, patchSize);
-		RealTransformRandomAccess viewRa = view.randomAccess();
-		
-		viewRa.setPosition(new int[]{0,0,0});
-		logger.info("val: " + viewRa.get());
-		
-		viewRa.setPosition(new int[]{0,0,-1});
-		logger.info("val: " + viewRa.get());
-
-		viewRa.setPosition(new int[]{0,0,1});
-		logger.info("val: " + viewRa.get());
-		
-		ArrayImgFactory<UnsignedByteType> ubfactory = new ArrayImgFactory<UnsignedByteType>();
-		Img<UnsignedByteType> maskImg = ubfactory.create(img, new UnsignedByteType());
-		
-		UnsignedByteType maskVal = new UnsignedByteType(1);
-		
-		CrackCorrection.setMask( e.getPosition(), 
-				patchSize, xfm, Views.extendValue(maskImg, new UnsignedByteType(0)), maskVal);
-		
-
-		assertEquals( "window size ", patchSize[0]*patchSize[1]*patchSize[2], ImgUtil.numNonZero(maskImg));
 		
 		
 	}
-	
+
+	@Test
+	public void testView(){
+		
+		int nLevels = 5;
+		
+		// test view
+		Img<FloatType> img = ImgUtil.createCheckerImg( new int[]{15,15,15}, new FloatType(), nLevels);
+		
+		int[] patchSize = new int[]{5,5,3};
+		Edgel e = new Edgel(
+				new float[]{7f, 9f, 11f},
+				new float[]{0f, 1f, 0f },
+				1f
+			);
+		
+		RealTransformRandomAccessible<FloatType, InverseRealTransform> view = EdgelTools.edgelToView(e, img, patchSize);
+		RealTransformRandomAccess viewRa = view.randomAccess();
+
+		viewRa.setPosition(new int[]{0,0,0});
+		logger.info("val: " + viewRa.get());
+		
+		assertEquals("value at patch center", ArrayUtil.sum(e.getPosition()) % nLevels, viewRa.get());
+		
+
+//		viewRa.setPosition(new int[]{0,0,-1});
+//		logger.info("val: " + viewRa.get());
+//
+//		viewRa.setPosition(new int[]{0,0,1});
+//		logger.info("val: " + viewRa.get());
+
+		//				ArrayImgFactory<UnsignedByteType> ubfactory = new ArrayImgFactory<UnsignedByteType>();
+		//				Img<UnsignedByteType> maskImg = ubfactory.create(img, new UnsignedByteType());
+		//				
+		//			x`	UnsignedByteType maskVal = new UnsignedByteType(1);
+		//				
+		//				CrackCorrection.setMask( e.getPosition(), 
+		//						patchSize, xfm, Views.extendValue(maskImg, new UnsignedByteType(0)), maskVal);
+		//
+		//				assertEquals( "window size ", patchSize[0]*patchSize[1]*patchSize[2], ImgUtil.numNonZero(maskImg));
+
+//		ImgUtil.writeByte(img, "/Users/bogovicj/Documents/projects/crackStitching/checkerImg.tif");
+		
+	}
+
 
 }

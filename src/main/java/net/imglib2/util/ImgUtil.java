@@ -409,6 +409,32 @@ public class ImgUtil {
       }
    }
    
+   public static <T extends NativeType<T> & RealType<T>> Img<T> createCheckerImg(int[] sz,  T t, int numLevels ){
+
+	   if( numLevels < 2 )
+	   {
+		   logger.error("a checkered image can only be created with two or more levels - returning null");
+		   return null;
+	   }
+	   
+	   ArrayImgFactory<T> factory = new ArrayImgFactory<T>();
+	   Img<T> out = factory.create( sz, t);
+	   
+	   Cursor<T> c = out.cursor();
+	   int[] pos = new int[sz.length];
+	   while ( c.hasNext() )
+	   {
+		   c.fwd();
+		   c.localize(pos);
+		   
+		   int sum = ArrayUtil.sum(pos);
+		   c.get().setReal(
+				   	( sum % numLevels)
+				   );
+	   }
+	   
+	   return out;
+   }
 
    public static <T extends NativeType<T> & RealType<T>> Img<T> createEdgeImg(int[] sz, double[] w,  T t, double sigma){
       ArrayImgFactory<T> factory = new ArrayImgFactory<T>();
