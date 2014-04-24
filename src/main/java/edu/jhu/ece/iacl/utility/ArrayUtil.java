@@ -1331,6 +1331,16 @@ public class ArrayUtil {
 		for(int i=0; i<in.length; i++) {	out[i]*=-in[i]; }
 		return out;
 	}
+	public static final int sum(int[] in){
+		int sum = 0;
+		for(int i=0; i<in.length; i++) {	sum+=in[i]; 		}
+		return sum;
+	}
+	public static final long sum(long[] in){
+		long sum = 0;
+		for(int i=0; i<in.length; i++) {	sum+=in[i]; 		}
+		return sum;
+	}
 	public static final float sum(float[] in){
 		float sum = 0;
 		for(int i=0; i<in.length; i++) {	sum+=in[i]; 		}
