@@ -74,6 +74,45 @@ public class EdgelTools {
 		
 	}
 	
+
+	/**
+	 * Finds the first zero-crossing of a 1d function with linear interpolation
+	 * 
+	 * @param src
+	 */
+	public static <T extends RealType<T>> double zeroXing1d(RandomAccessibleInterval<T> src)
+	{
+		double x = Double.NaN;
+		
+		if( src.numDimensions() != 1){
+			logger.error("zeroXing1d accepts 1d intervals only - returning NaN");
+			return x;
+		}
+		
+		RandomAccess<T> ra = src.randomAccess();
+		ra.setPosition(0, 0);
+		double lastVal = ra.get().getRealDouble();
+		
+		
+		for ( long i=src.min(0)+1; i<src.max(0); i++){
+			ra.setPosition(i, 0);
+			double curVal = ra.get().getRealDouble();
+			
+			if(curVal * lastVal < 0){ 
+				// a sign change
+				x = i - 1 - ( lastVal / ( curVal - lastVal )); 
+				break;
+			}
+			else{
+				// no sign change
+				lastVal = curVal;
+			}
+		}
+		
+		return x;
+	}
+	
+			
 	/**
 	 * Find discrete local minima using a cross neighborhood.
 	 * 

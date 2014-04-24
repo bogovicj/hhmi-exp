@@ -154,6 +154,9 @@ public class EdgelToolsTest {
 			);
 			
 		}
+		
+		double zeroXing = EdgelTools.zeroXing1d(lapl);
+		System.out.println( "zero x-ing: " + zeroXing);
 	}
 	
 	@Test
