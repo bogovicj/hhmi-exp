@@ -446,7 +446,7 @@ public class ImgUtil {
       System.out.println(" ctr = " + ArrayUtil.printArray(ctr));
       
       Cursor<T> c = out.localizingCursor();
-      double[] pos = new double[3];
+      double[] pos = new double[out.numDimensions()];
       while(c.hasNext()){
          T val = c.next();
          c.localize(pos);
@@ -598,17 +598,18 @@ public class ImgUtil {
 
    }
    
-   public static < T extends NativeType< T >> void copyInto(
+   public static < T extends Type< T >> void copyInto(
 		   RandomAccessible<T> src, 
 		   IterableInterval<T> dest)
    {
-	   Cursor<T> c_in  = dest.cursor();
+	   Cursor<T> c_dest  = dest.cursor();
 	   RandomAccess<T> ra = src.randomAccess();
 
-	   while(c_in.hasNext()){
-		   c_in.fwd();
-		   ra.setPosition(c_in);
-		   ra.get().set(c_in.get());
+	   while(c_dest.hasNext()){
+		   c_dest.fwd();
+		   ra.setPosition(c_dest);
+		   c_dest.get().set(ra.get());
+//		   System.out.println(" ra.get: " + ra.get());
 	   }
    }
    
@@ -805,6 +806,14 @@ public class ImgUtil {
 					}
 				}
 		return count;
+	}
+	
+	public static <T> void printPosition(RandomAccess<T> ra){
+		int N = ra.numDimensions();
+		for(int d=0; d<N; d++){
+			System.out.print( " " + ra.getLongPosition(d));
+		}
+		System.out.print("\n");
 	}
 
 }

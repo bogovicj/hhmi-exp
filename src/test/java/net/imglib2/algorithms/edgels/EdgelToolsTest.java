@@ -1,18 +1,20 @@
 package net.imglib2.algorithms.edgels;
 
 import static org.junit.Assert.*;
-
-
 import net.imglib2.RandomAccess;
 import net.imglib2.algorithm.edge.Edgel;
 import net.imglib2.algorithms.edge.EdgelTools;
 import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.ImgUtil;
+import net.imglib2.util.Intervals;
+import net.imglib2.view.IntervalView;
+import net.imglib2.view.Views;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -118,5 +120,79 @@ public class EdgelToolsTest {
 		
 	}
 
+	@Test
+	public void testLaplacianEdge1d()
+	{
+		Img<FloatType> img = ImgUtil.createEdgeImg( new int[]{21},
+				new double[]{1}, new FloatType(), 1);
+		
+		Img<FloatType> lapl = img.factory().create( new int[]{21}, new FloatType());
+		Img<FloatType> edge = img.factory().create( new int[]{21}, new FloatType());
+		
+		
+		EdgelTools.laplacian( Views.extendBorder( img ), lapl);
+		EdgelTools.localAbsoluteMinNN( 
+				Views.extendMirrorDouble( lapl ), 
+				Views.interval( edge, Intervals.expand(edge, -1) ), 
+				0.0);
+		
+		RandomAccess<FloatType> ira = img.randomAccess();
+		RandomAccess<FloatType> lra = lapl.randomAccess();
+		RandomAccess<FloatType> era = edge.randomAccess();
+		
+		for( int i=0; i< img.dimension(0); i++)
+		{
+			ira.setPosition(i, 0);
+			lra.setPosition(i, 0);
+			era.setPosition(i, 0);
+			
+			
+			System.out.println(
+					"  " + ira.get() +
+					"\t" + lra.get() +
+					"\t" + era.get()
+			);
+			
+		}
+	}
+	
+	@Test
+	public void testLaplacianEdge3d()
+	{
+		
+		Img<FloatType> img = ImgUtil.createEdgeImg( new int[]{15, 15, 15},
+				new double[]{1,1,0.1}, new FloatType(), 1);
+		
+		ImgUtil.writeFloat(img, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/edgeImg.tif");
+	
+		
+		ArrayImgFactory<FloatType> factory = new ArrayImgFactory<FloatType>();
+		Img<FloatType> lapl = factory.create( new int[]{15, 15, 15}, new FloatType());
+		Img<FloatType> edge = factory.create( new int[]{15, 15, 15}, new FloatType());
+		
+		EdgelTools.laplacian( Views.extendBorder( img ), lapl);
+		
+		ImgUtil.writeFloat(lapl, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/edgeImgLap.tif");
+		
+//		long[] min = new long[edge.numDimensions()];
+//		long[] max = new long[edge.numDimensions()];
+//		for ( int d=0; d<edge.numDimensions() - 1; d++ ){
+//			min[d] = 1;
+//			max[d] = edge.dimension(d) - 1;
+//		}
+//		min[edge.numDimensions() - 1] = 0;
+//		max[edge.numDimensions() - 1] = edge.dimension( edge.numDimensions() - 1);
+//		
+//		System.out.println("min: " + ArrayUtil.printArray(min));
+//		System.out.println("max: " + ArrayUtil.printArray(max));
+
+		
+		EdgelTools.localAbsoluteMinNN( 
+				Views.extendMirrorDouble( lapl ), 
+				Views.interval( edge, Intervals.expand(edge, -1) ), 
+				0.000001);
+		ImgUtil.writeFloat(edge, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/edgeImgLapEdge.tif");
+		
+	}
 
 }

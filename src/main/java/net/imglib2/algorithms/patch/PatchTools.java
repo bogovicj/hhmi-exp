@@ -1,5 +1,7 @@
 package net.imglib2.algorithms.patch;
 
+import net.imglib2.RandomAccessible;
+import net.imglib2.RandomAccessibleInterval;
 import edu.jhu.ece.iacl.utility.ArrayUtil;
 
 public class PatchTools {
@@ -22,6 +24,10 @@ public class PatchTools {
 		return midPt;
 	}
 	
+	public static <T> void copyViewTo( RandomAccessible<T> src, RandomAccessibleInterval<T> dest)
+	{
+		
+	}
 	
 		
 }

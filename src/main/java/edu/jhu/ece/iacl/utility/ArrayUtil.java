@@ -824,6 +824,20 @@ public class ArrayUtil {
 		}
 		return b;
 	}
+	public static final int[] toInt(long[] a){
+		int[] b = new int[a.length];
+		for(int i=0; i<a.length; i++){
+			b[i]= (int)a[i];
+		}
+		return b;
+	}
+	public static final long[] toLong(int[] a){
+		long[] b = new long[a.length];
+		for(int i=0; i<a.length; i++){
+			b[i]=a[i];
+		}
+		return b;
+	}
 	public static final float[] toFloat(int[] a){
 		float[] b = new float[a.length];
 		for(int i=0; i<a.length; i++){

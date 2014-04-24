@@ -16,7 +16,6 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.io.ImgOpener;
 import net.imglib2.type.BooleanType;
 import net.imglib2.type.logic.BitType;
 import net.imglib2.type.numeric.NumericType;
@@ -83,64 +82,64 @@ public class PartialDerivativeDirectional {
 		
 	}
 	
-	public static void testSingleGradient(){
-		String filename = "/groups/jain/home/bogovicj/learning/advanced-imglib2/images/bee-1.tif";
-
-		UnsignedByteType type = new UnsignedByteType();
-		ArrayImgFactory< UnsignedByteType > factory = new ArrayImgFactory< UnsignedByteType >();
-		
-		Img<UnsignedByteType> img = null;
-		Img<BitType>          mask = null;
-		Img<FloatType>        gradient = null;
-		
-		// read image and roi
-		try{
-			
-			img = new ImgOpener().openImg( filename , factory, type );
-			mask = img.factory().imgFactory(new BitType(true)).create(img, new BitType(true));
-			gradient = img.factory().imgFactory(new FloatType(0f)).create(
-					new long[]{img.dimension(0), img.dimension(1), 2}, new FloatType(0f));
-		
-		}catch(Exception e){
-			e.printStackTrace();
-		}
-		
-		System.out.println("grad: " + gradient);
-		
-		ImgUtil.fill(mask, new BitType(true));
-//		ImageJFunctions.show( mask );
-		
-//		RandomAccessibleInterval< T> infinite1 =
-//				Views.interval( Views.extendValue( img,  img.randomAccess().get()), img);
-		
-		RandomAccessibleInterval<BitType> maskInf = Views.interval(
-				Views.extendValue(mask, new BitType(false)), img);
-		
-		RandomAccess<BitType> mcra = mask.randomAccess();
-		mcra.setPosition(new int[]{25,25});
-		
-		
-		
-//		while(mc.hasNext()){
-		
-			gradientMask(img, maskInf, gradient, 0, mcra, true);
-			gradientMask(img, maskInf, gradient, 1, mcra, true);
+//	public static void testSingleGradient(){
+//		String filename = "/groups/jain/home/bogovicj/learning/advanced-imglib2/images/bee-1.tif";
+//
+//		UnsignedByteType type = new UnsignedByteType();
+//		ArrayImgFactory< UnsignedByteType > factory = new ArrayImgFactory< UnsignedByteType >();
+//		
+//		Img<UnsignedByteType> img = null;
+//		Img<BitType>          mask = null;
+//		Img<FloatType>        gradient = null;
+//		
+//		// read image and roi
+//		try{
+//			
+//			img = new ImgOpener().openImg( filename , factory, type );
+//			mask = img.factory().imgFactory(new BitType(true)).create(img, new BitType(true));
+//			gradient = img.factory().imgFactory(new FloatType(0f)).create(
+//					new long[]{img.dimension(0), img.dimension(1), 2}, new FloatType(0f));
+//		
+//		}catch(Exception e){
+//			e.printStackTrace();
 //		}
-			
-		
-		
-		ImgUtil.printNumNonZero(gradient);
-		
-//		System.out.println(" ");
 //		
-//		RandomAccess<FloatType> gdra = gradient.randomAccess();
+//		System.out.println("grad: " + gradient);
 //		
-//		gdra.setPosition(new int[]{25,25,0});
-//		System.out.println(" " + gdra.get());
+//		ImgUtil.fill(mask, new BitType(true));
+////		ImageJFunctions.show( mask );
 //		
-//		gdra.setPosition(new int[]{25,25,1});
-//		System.out.println(" " + gdra.get());
-	}
+////		RandomAccessibleInterval< T> infinite1 =
+////				Views.interval( Views.extendValue( img,  img.randomAccess().get()), img);
+//		
+//		RandomAccessibleInterval<BitType> maskInf = Views.interval(
+//				Views.extendValue(mask, new BitType(false)), img);
+//		
+//		RandomAccess<BitType> mcra = mask.randomAccess();
+//		mcra.setPosition(new int[]{25,25});
+//		
+//		
+//		
+////		while(mc.hasNext()){
+//		
+//			gradientMask(img, maskInf, gradient, 0, mcra, true);
+//			gradientMask(img, maskInf, gradient, 1, mcra, true);
+////		}
+//			
+//		
+//		
+////		ImgUtil.printNumNonZero(gradient);
+//		
+////		System.out.println(" ");
+////		
+////		RandomAccess<FloatType> gdra = gradient.randomAccess();
+////		
+////		gdra.setPosition(new int[]{25,25,0});
+////		System.out.println(" " + gdra.get());
+////		
+////		gdra.setPosition(new int[]{25,25,1});
+////		System.out.println(" " + gdra.get());
+//	}
 	
 	public static Img<FloatType> genGradient( ArrayImgFactory<FloatType> factory, FloatType val,  long nx, long ny, double stdDev){
 		
@@ -758,12 +757,6 @@ public class PartialDerivativeDirectional {
 			}
 		}
 		
-		public static void printPosition(RandomAccess ra){
-			int N = ra.numDimensions();
-			for(int d=0; d<N; d++){
-				System.out.print( " " + ra.getLongPosition(d));
-			}
-			System.out.print("\n");
-		}
+
 	
 }

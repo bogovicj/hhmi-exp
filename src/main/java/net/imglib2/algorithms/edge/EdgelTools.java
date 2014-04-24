@@ -7,18 +7,19 @@ import org.ejml.simple.SimpleMatrix;
 import org.ejml.simple.SimpleSVD;
 
 import edu.jhu.ece.iacl.utility.ArrayUtil;
-import net.imglib2.RealRandomAccessible;
 import net.imglib2.algorithm.edge.Edgel;
+import net.imglib2.algorithm.gradient.PartialDerivative;
+import net.imglib2.algorithm.region.localneighborhood.Neighborhood;
 import net.imglib2.algorithms.patch.PatchTools;
+import net.imglib2.algorithms.region.localneighborhood.CrossShape;
+import net.imglib2.algorithms.region.localneighborhood.CrossShape.NeighborhoodsAccessible;
 import net.imglib2.img.Img;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
-import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.realtransform.InverseRealTransform;
-import net.imglib2.realtransform.RealTransformRandomAccessible;
-import net.imglib2.realtransform.RealViews;
 import net.imglib2.type.numeric.RealType;
-import net.imglib2.view.Views;
+import net.imglib2.*;
+import net.imglib2.realtransform.*;
+import net.imglib2.view.*;
+import net.imglib2.view.composite.*;
 
 public class EdgelTools {
 
@@ -27,6 +28,102 @@ public class EdgelTools {
 			.getName());
 
 
+	public static <T extends RealType<T>> void laplacian( 
+			RandomAccessible<T> src,
+			Img<T> dest ){
+		
+		long[] gradDims = new long[dest.numDimensions() + 1];
+		for ( int d=0; d<dest.numDimensions(); d++){
+			gradDims[d] = dest.dimension(d);
+		}
+		gradDims[dest.numDimensions()] = dest.numDimensions();
+		
+		
+		// first partial derivatives
+		Img<T> grad1 = dest.factory().create(gradDims, dest.firstElement());
+		for ( int d=0; d<dest.numDimensions(); d++)
+		{
+			PartialDerivative.gradientCentralDifference(
+					src, Views.hyperSlice( grad1, dest.numDimensions(), d), d);
+		}
+		
+		// second partial derivatives
+		Img<T> grad2 = dest.factory().create(gradDims, dest.firstElement());
+		for ( int d=0; d<dest.numDimensions(); d++)
+		{
+			PartialDerivative.gradientCentralDifference(
+					Views.extendMirrorDouble( Views.hyperSlice( grad1, dest.numDimensions(), d )), 
+					Views.hyperSlice( grad2, dest.numDimensions(), d), d);
+		}
+		
+		CompositeIntervalView<T, ? extends GenericComposite<T>> grad2VecView = Views.collapse(grad2);
+		
+		Cursor<T> dest_c = dest.cursor();
+		CompositeIntervalView<T, ? extends GenericComposite<T>>.CompositeRandomAccess grad2Ra = grad2VecView.randomAccess();
+		
+		while( dest_c.hasNext() ) 
+		{
+			dest_c.fwd();
+			grad2Ra.setPosition(dest_c);
+			
+			for ( long i=0; i<grad2.dimension(dest.numDimensions()); i++)
+			{
+				dest_c.get().add( grad2Ra.get().get(i) );
+			}
+		}
+		
+	}
+	
+	/**
+	 * Find discrete local minima using a cross neighborhood.
+	 * 
+	 * @param src
+	 * @param dest
+	 */
+	public static <T extends RealType<T>> void localAbsoluteMinNN(
+			RandomAccessible<T> src,
+			RandomAccessibleInterval<T> dest,
+			double tol)
+	{
+		
+		RandomAccess<T> srcRa  = src.randomAccess();
+		RandomAccess<T> destRa = dest.randomAccess();
+		
+		CrossShape nbrhood = new CrossShape( 2, true);
+		NeighborhoodsAccessible<T> windows = nbrhood.neighborhoods(dest);
+		
+		Cursor<Neighborhood<T>> winCurs = windows.cursor();
+		while(winCurs.hasNext())
+		{
+			winCurs.fwd();
+			
+			srcRa.setPosition(winCurs);
+			double ctrVal = Math.abs( srcRa.get().getRealDouble() );
+			
+			// check if any neighbors have a larger value
+			boolean isMin = true;
+			Cursor<T> nbrC = winCurs.get().cursor();
+			while ( nbrC.hasNext() )
+			{
+				nbrC.fwd();
+				
+				srcRa.setPosition(nbrC);
+				if( Math.abs(srcRa.get().getRealDouble()) + tol < ctrVal )
+				{
+					isMin = false;
+					break;
+				}
+			}
+			
+			if( isMin )
+			{
+				destRa.setPosition(winCurs);
+				destRa.get().setOne();
+			}
+			
+		}
+	}
+	
 	/**
 	 * Replace this with a cross product if too slow..
 	 * @param in an M x N matrix whose rows span a subspace of R^N
