@@ -2,17 +2,17 @@ package net.imglib2.algorithms.edge;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-
 import org.ejml.data.DenseMatrix64F;
 import org.ejml.simple.SimpleMatrix;
 import org.ejml.simple.SimpleSVD;
 
 import edu.jhu.ece.iacl.utility.ArrayUtil;
-
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.algorithm.edge.Edgel;
+import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.img.Img;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
@@ -25,24 +25,6 @@ public class EdgelTools {
 
 	protected static Logger logger = LogManager.getLogger(EdgelTools.class
 			.getName());
-
-
-	/**
-	 * Returns the integer coordinate of the midpoint of a patch
-	 * with the specified size.  Is only accurate for patches
-	 * with an odd size in every dimension.
-	 * 
-	 * @param patchSize size of the patch
-	 * @return the midpoint coordinate
-	 */
-	public static int[] patchSizeToMidpt(int[] patchSize){ // determine translation
-
-		int[] midPt = ArrayUtil.clone(patchSize);
-		ArrayUtil.addInPlace(midPt, -1);
-		ArrayUtil.divide(midPt, 2);
-
-		return midPt;
-	}
 
 
 	/**
@@ -120,11 +102,12 @@ public class EdgelTools {
 		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
 		logger.info(" edgel mag : " + edgel.getMagnitude());
 
-		int[] midPt = patchSizeToMidpt( patchSize ); 	
+		int[] midPt = PatchTools.patchSizeToMidpt( patchSize ); 	
 		AffineTransform3D xfm = edgelToXfm(edgel, midPt);
 
 
 		NLinearInterpolatorFactory<T> interpFactory = new NLinearInterpolatorFactory<T>();
+//		NearestNeighborInterpolatorFactory<T> interpFactory = new NearestNeighborInterpolatorFactory<T>();
 
 		RealRandomAccessible<T> interpolant = Views.interpolate(
 				Views.extendMirrorSingle(src), interpFactory);

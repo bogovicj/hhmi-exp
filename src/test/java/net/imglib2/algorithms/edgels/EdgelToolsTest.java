@@ -2,23 +2,17 @@ package net.imglib2.algorithms.edgels;
 
 import static org.junit.Assert.*;
 
-import java.util.ArrayList;
 
+import net.imglib2.RandomAccess;
 import net.imglib2.algorithm.edge.Edgel;
-import net.imglib2.algorithms.crack.CrackCorrection;
 import net.imglib2.algorithms.edge.EdgelTools;
+import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.img.Img;
-import net.imglib2.img.array.ArrayImgFactory;
-import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
-import net.imglib2.realtransform.RealTransformRandomAccessible.RealTransformRandomAccess;
-import net.imglib2.type.numeric.integer.IntType;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.ImgUtil;
-import net.imglib2.view.Views;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -44,7 +38,7 @@ public class EdgelToolsTest {
 			);
 			
 		int[] patchSize = new int[]{5,5,3};
-		int[] midPt = EdgelTools.patchSizeToMidpt(patchSize);
+		int[] midPt = PatchTools.patchSizeToMidpt(patchSize);
 		
 		int[] expectMidPt = new int[]{2,2,1};
 		
@@ -83,16 +77,21 @@ public class EdgelToolsTest {
 		assertEquals(" xfm (0,0,-1) z", expectMidMinusZ[2], res[2], tol );
 		
 		
+//		AffineTransform3D xfmInv = xfm.inverse();
 		
 	}
-
+	
 	@Test
 	public void testView(){
 		
-		int nLevels = 5;
+		/**  test view **/
+//		int nLevels = 5;
+//		Img<FloatType> img = ImgUtil.createCheckerImg( new int[]{15,15,15}, new FloatType(), nLevels);
+//		ImgUtil.writeFloat(img, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/checkerImg.tif");
 		
-		// test view
-		Img<FloatType> img = ImgUtil.createCheckerImg( new int[]{15,15,15}, new FloatType(), nLevels);
+		Img<FloatType> img = ImgUtil.createGradientImgY(15, 15, 15,  new FloatType());
+
+		RandomAccess<FloatType> imgRa = img.randomAccess();
 		
 		int[] patchSize = new int[]{5,5,3};
 		Edgel e = new Edgel(
@@ -102,31 +101,20 @@ public class EdgelToolsTest {
 			);
 		
 		RealTransformRandomAccessible<FloatType, InverseRealTransform> view = EdgelTools.edgelToView(e, img, patchSize);
-		RealTransformRandomAccess viewRa = view.randomAccess();
+		RealTransformRandomAccessible<FloatType, InverseRealTransform>.RealTransformRandomAccess viewRa = view.randomAccess();
 
-		viewRa.setPosition(new int[]{0,0,0});
-		logger.info("val: " + viewRa.get());
+		viewRa.setPosition(new int[]{2,2,0});
+		imgRa.setPosition(new int[]{7,8,11});
+		assertEquals("value at patch -z", imgRa.get().get(), viewRa.get().get(), tol);
 		
-		assertEquals("value at patch center", ArrayUtil.sum(e.getPosition()) % nLevels, viewRa.get());
+		viewRa.setPosition(new int[]{2,2,1});
+		imgRa.setPosition(new int[]{7,9,11});
+		assertEquals("value at patch center", imgRa.get().get(), viewRa.get().get(), tol);
 		
-
-//		viewRa.setPosition(new int[]{0,0,-1});
-//		logger.info("val: " + viewRa.get());
-//
-//		viewRa.setPosition(new int[]{0,0,1});
-//		logger.info("val: " + viewRa.get());
-
-		//				ArrayImgFactory<UnsignedByteType> ubfactory = new ArrayImgFactory<UnsignedByteType>();
-		//				Img<UnsignedByteType> maskImg = ubfactory.create(img, new UnsignedByteType());
-		//				
-		//			x`	UnsignedByteType maskVal = new UnsignedByteType(1);
-		//				
-		//				CrackCorrection.setMask( e.getPosition(), 
-		//						patchSize, xfm, Views.extendValue(maskImg, new UnsignedByteType(0)), maskVal);
-		//
-		//				assertEquals( "window size ", patchSize[0]*patchSize[1]*patchSize[2], ImgUtil.numNonZero(maskImg));
-
-//		ImgUtil.writeByte(img, "/Users/bogovicj/Documents/projects/crackStitching/checkerImg.tif");
+		viewRa.setPosition(new int[]{2,2,2});
+		imgRa.setPosition(new int[]{7,10,11});
+		assertEquals("value at patch +z", imgRa.get().get(), viewRa.get().get(), tol);
+		
 		
 	}
 

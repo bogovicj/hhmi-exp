@@ -1,14 +1,9 @@
 package net.imglib2.algorithms.crack;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.ejml.data.DenseMatrix64F;
-import org.ejml.simple.SimpleMatrix;
-import org.ejml.simple.SimpleSVD;
 
 import edu.jhu.ece.iacl.algorithms.MGDM.MgdmDecomposition;
 import edu.jhu.ece.iacl.utility.ArrayUtil;
@@ -16,32 +11,24 @@ import ij.IJ;
 import ij.ImagePlus;
 import net.imglib2.*;
 import net.imglib2.img.array.ArrayImgFactory;
-import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.*;
 import net.imglib2.algorithm.edge.*;
 import net.imglib2.algorithms.edge.EdgelTools;
-import net.imglib2.algorithms.geometry.RodriguesRotation;
 import net.imglib2.algorithms.moments.ImgMoment;
+import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.img.*;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.io.ImgIOException;
 import net.imglib2.io.ImgOpener;
 import net.imglib2.iterator.IntervalIterator;
-import net.imglib2.ops.operation.randomaccessibleinterval.unary.DistanceMap;
 import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.realtransform.InverseRealTransform;
-import net.imglib2.realtransform.InvertibleRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
-import net.imglib2.realtransform.RealTransformRandomAccessible.RealTransformRandomAccess;
-import net.imglib2.realtransform.RealTransformRealRandomAccessible.RealTransformRealRandomAccess;
-import net.imglib2.realtransform.RealViews;
+
 import net.imglib2.type.Type;
 import net.imglib2.type.numeric.*;
 import net.imglib2.type.numeric.integer.*;
 import net.imglib2.type.numeric.real.*;
 import net.imglib2.view.Views;
-import net.imglib2.view.composite.CompositeIntervalView;
-import net.imglib2.view.composite.GenericComposite;
 import net.imglib2.util.ImgUtil;
 import net.imglib2.util.Util;
 
@@ -65,13 +52,12 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 
 	Img<T> img;
 	Img<B> mask;
-
+	
 	Img<UnsignedByteType> edgelPatchMasks;
 	int b = 255;
 
 	RealRandomAccess<T> interpRa;
 
-	//IntegralImgDouble<B> maskIntImg;
 	ArrayList<Edgel> edgels;
 	
 	Img<FloatType> depthPatch;
@@ -173,7 +159,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
 		logger.info(" edgel mag : " + edgel.getMagnitude());
 
-		int[] midPt = EdgelTools.patchSizeToMidpt(patchSize);
+		int[] midPt = PatchTools.patchSizeToMidpt(patchSize);
 		
 //		AffineTransform3D xfm = pickTransformation(edgel);
 		AffineTransform3D xfm = EdgelTools.edgelToXfm(edgel, midPt);
@@ -184,8 +170,8 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 				patchSize, xfm, edgelPatchMasks, new UnsignedByteType(b));
 		b--;
 
-		ImgUtil.printNumNonZero(this.edgelPatchMasks);
-		//		System.out.println("nnz edgelPatch: " + );
+		
+	    System.out.println("nnz edgelPatch: " + ImgUtil.numNonZero(this.edgelPatchMasks));
 
 		return res;
 	}
@@ -212,7 +198,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 			}
 		}
 
-		int[] midPt = EdgelTools.patchSizeToMidpt(patchSizeAug);
+		int[] midPt = PatchTools.patchSizeToMidpt(patchSizeAug);
 		funcra.setPosition(midPt);
 
 		double[] testpos = new double[3];
@@ -329,13 +315,22 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		}
 	}
 
-	public void computeCrackDepthNormal(Edgel edgel, int[] patchSize)
+	public void setEdgelMask(Edgel edgel, int[] patchSize)
+	{
+		int[] midPt = PatchTools.patchSizeToMidpt(patchSize);
+		AffineTransform3D xfm = EdgelTools.edgelToXfm(edgel, midPt);
+		
+		CrackCorrection.setMask( edgel.getPosition(), patchSize, xfm, edgelPatchMasks, 
+				new UnsignedByteType(b));
+		
+	}
+	
+	public void computeCrackDepthNormalDist(Edgel edgel, int[] patchSize)
 	{
 	
-		 edgelToImage(edgel, img, patchSize);
-		 
+//		 edgelToImage(edgel, img, patchSize);
 		 		
-		 int ndims 	  = img.numDimensions();
+		int ndims 	  = img.numDimensions();
 		int ndims_out = patchSize.length;
 		
 		int[] patchSizeAug = new int[ndims];
@@ -380,7 +375,34 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		
 	}
 	
-	
+	public void computeCrackDepthNormalMask(Edgel edgel, int[] patchSize)
+	{
+		int ndims 	  = img.numDimensions();
+		int ndims_out = patchSize.length;
+		
+		int[] patchSizeAug = new int[ndims];
+		for (int i=0; i<ndims_out; i++){
+			patchSizeAug[i]=patchSize[i];
+		}
+		if(ndims!=ndims_out){
+			for (int i=ndims_out; i<ndims; i++){
+				patchSizeAug[i] = 1;
+			}
+		}
+		
+		if( imgPatch == null){
+			imgPatch = img.factory().create(patchSize, img.firstElement());
+		}
+		if( depthPatch == null){
+			ArrayImgFactory<FloatType> ffactory = new ArrayImgFactory<FloatType>();
+			depthPatch = ffactory.create(patchSize, new FloatType());
+		}
+		
+		RealTransformRandomAccessible<T,?> imgEdgelView = EdgelTools.edgelToView( edgel, img, patchSizeAug );
+		RealTransformRandomAccessible<B,?> mskEdgelView = EdgelTools.edgelToView( edgel, mask, patchSizeAug );
+		
+//		Views.interval(randomAccessible, interval)
+	}
 	
 	public Img<FloatType> compMaskDistMgdm()
 	{
@@ -511,7 +533,7 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 
 		cc.computeEdgels();
 
-		int[] N = new int[] { 19, 19, 7 };
+		int[] patchSize = new int[] { 19, 19, 7 };
 
 //		float[] tgtPos  = new float[]{ 66f, 290f, 13f };
 //		float[] tgtPos = new float[]{ 70f, 312f, 13f };
@@ -524,11 +546,12 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		logger.info("\nedgel idx: " + i);
 
 		
-		cc.computeCrackDepthNormal( cc.edgels.get(i), N );
+//		cc.computeCrackDepthNormal( cc.edgels.get(i), N );
+		cc.setEdgelMask( cc.edgels.get(i), patchSize);
 		
-		ImgUtil.write( cc.depthPatch, 		depthPatchFn + fnSuffix );
-		ImgUtil.write( cc.imgPatch, 		imgPatchFn + fnSuffix );
-		ImgUtil.write( cc.edgelPatchMasks, 	edgelMaskPrefix + fnSuffix );
+//		ImgUtil.writeFloat( cc.depthPatch, 		depthPatchFn + fnSuffix );
+//		ImgUtil.writeFloat( cc.imgPatch, 		imgPatchFn + fnSuffix );
+		ImgUtil.writeByte( cc.edgelPatchMasks, 	edgelMaskPrefix + fnSuffix );
 		
 
 	}
@@ -927,6 +950,8 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 			AffineTransform3D xfmIn,  RandomAccessible<L> src, L val ){
 		
 		AffineTransform3D xfm = xfmIn.copy();
+//		AffineTransform3D xfm = xfmIn.inverse();
+		
 		
 		RandomAccess<L> ra = src.randomAccess();
 //		ra.setPosition(position);
@@ -955,46 +980,89 @@ public class CrackCorrection<T extends RealType<T>, B extends RealType<B>> {
 		}
 	}
 	
-	
-
-
-	
-
-	
-	public static void testCombReplace(){
+	/**
+	 *  Samples a patch of size N^d where d is the dimensionality of the 
+	 *  source image src. The input transformation maps the x- and y-axes 
+	 *  to the axes of the sampling plane and is typically determined by 
+	 *  the {@link pickTransformation} method.
+	 * 
+	 *
+	 * @param basepos point
+	 * @param N size of a dimension of the output patch
+	 * @param xfm transformation
+	 * @param src source image
+	 * @return 
+	 */
+	public static <L extends NumericType<L>> void setMask(float[] basepos, int[] patchSize,  
+			AffineTransform3D xfmIn,  RandomAccessible<L> src, L val ){
 		
-//		HashSet<UnsignedByteType> set = new HashSet<UnsignedByteType>();
-//		set.add(new UnsignedByteType((byte)0));
-//		set.add(new UnsignedByteType((byte)1));
-//		
-//		System.out.println("unique values:\n" + set);
+		AffineTransform3D xfm = xfmIn.copy();
+//		AffineTransform3D xfm = xfmIn.inverse();
 		
-//		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp.tif";
-//		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/Labels_ds_interp_cp_manPaint2.tif";
-		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/Labels_ds_interp_cp_manPaint3.tif";
+		logger.debug("set edgel mask ");
+		logger.debug("xfm : " + xfm);
+		
+		RandomAccess<L> ra = src.randomAccess();
+//		ra.setPosition(position);
+		
+		int ndims_in  = src.numDimensions();
+		
+		logger.debug(" basepos  :" + ArrayUtil.printArray( basepos ) );
+		logger.debug(" out size :" + ArrayUtil.printArray( patchSize ) );
 
-		IntType type = new IntType();
-		ArrayImgFactory< IntType > factory = new ArrayImgFactory< IntType >();
+		double[]  pos	= new double[ndims_in];
+		double[] dpos	= new double[ndims_in];
 		
-		Img<IntType> mask = null;
-		try 
-		{
-			mask = new ImgOpener().openImg( maskfn , factory, type );
+
+		IntervalIterator iter = new IntervalIterator(patchSize);
+		while(iter.hasNext()){
+			
+			iter.fwd();
+			iter.localize(pos);
+			
+			xfm.apply( pos, dpos);
+			int[] pt = ArrayUtil.toIntRound(dpos);
+			logger.trace(" pt :" + ArrayUtil.printArray( pt ) );
+			
+			ra.setPosition(pt);
+			ra.get().set(val);
 		}
-		catch (ImgIOException e)
-		{
-			e.printStackTrace();
-		}
-		
-		ImgUtil.printNumNonZero(mask);
-		
-		ArrayList<Integer> uniqueSet = ImgUtil.uniqueInt(mask);
-		System.out.println("unique values: " + uniqueSet.size());
-		System.out.println("unique values:\n" + uniqueSet);
-		
-		
 	}
-	
+
+//	
+//	public static void testCombReplace(){
+//		
+////		HashSet<UnsignedByteType> set = new HashSet<UnsignedByteType>();
+////		set.add(new UnsignedByteType((byte)0));
+////		set.add(new UnsignedByteType((byte)1));
+////		
+////		System.out.println("unique values:\n" + set);
+//		
+////		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp.tif";
+////		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/Labels_ds_interp_cp_manPaint2.tif";
+//		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/Labels_ds_interp_cp_manPaint3.tif";
+//
+//		IntType type = new IntType();
+//		ArrayImgFactory< IntType > factory = new ArrayImgFactory< IntType >();
+//		
+//		Img<IntType> mask = null;
+//		try 
+//		{
+//			mask = new ImgOpener().openImg( maskfn , factory, type );
+//		}
+//		catch (ImgIOException e)
+//		{
+//			e.printStackTrace();
+//		}
+//		
+//		
+//		ArrayList<Integer> uniqueSet = ImgUtil.uniqueInt(mask);
+//		System.out.println("unique values: " + uniqueSet.size());
+//		System.out.println("unique values:\n" + uniqueSet);
+//		
+//		
+//	}
+//	
 	   
 	public static void main(String[] args){
 
