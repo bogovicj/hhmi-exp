@@ -109,6 +109,10 @@ public class EdgelTools {
 			}
 		}
 		
+		if( Double.isNaN(x) ){
+			logger.warn("Could not detect edge - returning NaN");
+		}
+			
 		return x;
 	}
 	

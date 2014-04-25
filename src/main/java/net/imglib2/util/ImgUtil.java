@@ -441,9 +441,12 @@ public class ImgUtil {
       Img<T> out = factory.create( sz, t);
       
       double[] ctr = ArrayUtil.toDouble(sz);
+      double[] ones = new double[ctr.length]; 
+      ArrayUtil.fill(ones, 1);
+      ctr = ArrayUtil.subtract(ctr, ones);
       ArrayUtil.divide(ctr, 2);
       
-      System.out.println(" ctr = " + ArrayUtil.printArray(ctr));
+      logger.debug(" ctr = " + ArrayUtil.printArray(ctr));
       
       Cursor<T> c = out.localizingCursor();
       double[] pos = new double[out.numDimensions()];
