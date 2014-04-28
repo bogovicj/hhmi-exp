@@ -36,15 +36,15 @@ import net.imglib2.type.numeric.integer.ShortType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 
-public class ImgUtil {
+public class ImgOps {
 
-	public static Logger logger = LogManager.getLogger(ImgUtil.class.getName());
+	public static Logger logger = LogManager.getLogger(ImgOps.class.getName());
 	
 	public static <T extends NativeType<T>> void write(Img<T> img, String fn)
 	{
 		try
 		{
-			ImagePlus ipdp = ImgUtil.copyToImagePlus(img).getImagePlus();
+			ImagePlus ipdp = ImgOps.copyToImagePlus(img).getImagePlus();
 			IJ.save(ipdp, fn);
 		}
 		catch(Exception e)
@@ -262,7 +262,7 @@ public class ImgUtil {
 		dm.compute(mask, sdf);
 		
 		// negate mask
-		Img<B> maskInv = ImgUtil.thresholdMap(mask, 1, false);
+		Img<B> maskInv = ImgOps.thresholdMap(mask, 1, false);
 //		ImgUtil.numNonZero(maskInv);
 		
 		// oustide region

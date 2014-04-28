@@ -38,6 +38,8 @@ public class EdgelTools {
 		}
 		gradDims[dest.numDimensions()] = dest.numDimensions();
 		
+		logger.debug("ndims: " + src.numDimensions());
+		logger.debug("ndims: " + dest.numDimensions());
 		
 		// first partial derivatives
 		Img<T> grad1 = dest.factory().create(gradDims, dest.firstElement());
@@ -236,7 +238,7 @@ public class EdgelTools {
 	 * @param patchSize the patch size
 	 * @return the transformed view into the source image
 	 */
-	public static <T extends RealType<T>> RealTransformRandomAccessible<T,InverseRealTransform> edgelToView(Edgel edgel, Img<T> src, int[] patchSize) 
+	public static <T extends RealType<T>> RealTransformRandomAccessible<T, InverseRealTransform> edgelToView(Edgel edgel, RandomAccessibleInterval<T> src, int[] patchSize) 
 	{
 		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
 		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));

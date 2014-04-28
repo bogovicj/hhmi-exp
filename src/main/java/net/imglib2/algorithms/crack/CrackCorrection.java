@@ -23,14 +23,12 @@ import net.imglib2.iterator.IntervalIterator;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
-
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.*;
 import net.imglib2.type.numeric.integer.*;
 import net.imglib2.type.numeric.real.*;
 import net.imglib2.view.MixedTransformView;
 import net.imglib2.view.Views;
-
 import net.imglib2.util.*;
 
 
@@ -654,7 +652,10 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 //		return depthPatch;
 	}
 
-	public static <T extends RealType<T>> void computeCrackDepthNormalMask(Edgel edgel, Img<T> mask, int[] patchSize, Img<FloatType> depthPatch )
+	public static <T extends RealType<T>> void computeCrackDepthNormalMask(
+			Edgel edgel, 
+			RandomAccessibleInterval<T> mask, 
+			int[] patchSize, Img<T> depthPatch )
 	{
 		int ndims 	  = mask.numDimensions();
 		int ndims_out = patchSize.length;
@@ -671,15 +672,16 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 		
 		int[] patchMidPt = PatchTools.patchSizeToMidpt(patchSizeAug);
 		
-		RealTransformRandomAccessible<T,?> mskEdgelView = 
+		RealTransformRandomAccessible<T, InverseRealTransform> mskEdgelView = 
 				EdgelTools.edgelToView( edgel, mask, patchSizeAug );
 		
+		
 		// a 1-d image as long as the last dimension of the patch
-		Img<T> lap1d = mask.factory().create(
+		Img<T> lap1d = depthPatch.factory().create(
 				new int[]{patchSize[ndims_out-1]}, 
-				mask.firstElement());
+				depthPatch.firstElement());
 	
-		Cursor<FloatType> itvl = depthPatch.cursor();
+		Cursor<T> itvl = depthPatch.cursor();
 		int[] pos = new int[depthPatch.numDimensions()];
 		
 		while( itvl.hasNext() )
@@ -708,7 +710,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 			
 			if( !Double.isNaN(edgeX) )
 			{
-				itvl.get().set((float)edgeX );
+				itvl.get().setReal(edgeX);
 			}
 			
 		}	
