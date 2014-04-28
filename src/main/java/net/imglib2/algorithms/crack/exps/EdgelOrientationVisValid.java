@@ -1,5 +1,7 @@
 package net.imglib2.algorithms.crack.exps;
 
+import ij.IJ;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Random;
@@ -14,13 +16,13 @@ import net.imglib2.algorithm.edge.Edgel;
 import net.imglib2.algorithm.edge.SubpixelEdgelDetection;
 import net.imglib2.algorithms.crack.CrackCorrection;
 import net.imglib2.algorithms.edge.EdgelTools;
+import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.exception.ImgLibException;
+import net.imglib2.img.ImagePlusAdapter;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgs;
-import net.imglib2.io.ImgIOException;
-import net.imglib2.io.ImgOpener;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
@@ -45,32 +47,20 @@ public class EdgelOrientationVisValid {
 		String edgelMaskPrefix = "/groups/jain/home/bogovicj/projects/crackSegmentation/edgelValidate/edgelMask_1";
 
 		ArrayImgFactory<UnsignedByteType> ubfactory = new ArrayImgFactory<UnsignedByteType>();
-		ArrayImgFactory<IntType> ifactory = new ArrayImgFactory<IntType>();
-		ArrayImgFactory<FloatType> ffactory = new ArrayImgFactory<FloatType>();
 		
 		int[] patchSize = new int[]{7,7,3};
-		int[] patchMidPt = EdgelTools.patchSizeToMidpt(patchSize);
+		int[] patchMidPt = PatchTools.patchSizeToMidpt(patchSize);
 		
 
-		Img<FloatType> img = null;
+		Img<FloatType> img = ImagePlusAdapter.convertFloat( IJ.openImage(imgfn) );
 //		Img<UnsignedByteType> mask = null;
-		Img<FloatType> mask = null;
-		try {
-			img = new ImgOpener().openImg(imgfn, ffactory, new FloatType());
-			
-//			mask = new ImgOpener().openImg(maskfn, ubfactory,
-//					new UnsignedByteType());
-			mask = new ImgOpener().openImg(maskfn, ffactory,
-					new FloatType());
-			
-		} catch (ImgIOException e) {
-			e.printStackTrace();
-		}
+		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );
+
 
 //		CrackCorrection<FloatType, UnsignedByteType> cc = new CrackCorrection<FloatType, UnsignedByteType>(
 //				img, mask);
 		CrackCorrection<FloatType, FloatType> cc = new CrackCorrection<FloatType, FloatType>(
-				img, mask);
+				img, mask, patchSize);
 		
 		cc.computeEdgels();
 		
@@ -143,30 +133,18 @@ public class EdgelOrientationVisValid {
 
 		String edgelMaskPrefix = "/groups/jain/home/bogovicj/projects/crackSegmentation/edgelValidate/edgelMask_1";
 
-		ArrayImgFactory<UnsignedByteType> ubfactory = new ArrayImgFactory<UnsignedByteType>();
-		ArrayImgFactory<IntType> ifactory = new ArrayImgFactory<IntType>();
-		ArrayImgFactory<FloatType> ffactory = new ArrayImgFactory<FloatType>();
 		
 		int[] patchSize = new int[]{7,7,3};
-		int[] patchMidPt = EdgelTools.patchSizeToMidpt(patchSize);
+		int[] patchMidPt = PatchTools.patchSizeToMidpt(patchSize);
 		
-		Img<FloatType> img = null;
+		
+		Img<FloatType> img = ImagePlusAdapter.convertFloat( IJ.openImage(imgfn) );
 //		Img<UnsignedByteType> mask = null;
-		Img<FloatType> mask = null;
-		try {
-			img = new ImgOpener().openImg(imgfn, ffactory, new FloatType());
-			
-//			mask = new ImgOpener().openImg(maskfn, ubfactory,
-//					new UnsignedByteType());
-			mask = new ImgOpener().openImg(maskfn, ffactory,
-					new FloatType());
-			
-		} catch (ImgIOException e) {
-			e.printStackTrace();
-		}
+		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );
+
 
 		CrackCorrection<FloatType, FloatType> cc = new CrackCorrection<FloatType, FloatType>(
-				img, mask);
+				img, mask, patchSize);
 		
 		cc.computeEdgels();
 		ArrayList<Edgel> edgels = cc.getEdgels();
@@ -199,22 +177,11 @@ public class EdgelOrientationVisValid {
 		ArrayImgFactory<FloatType> ffactory = new ArrayImgFactory<FloatType>();
 		
 		int[] patchSize = new int[]{7,7,3};
-		int[] patchMidPt = EdgelTools.patchSizeToMidpt(patchSize);
+		int[] patchMidPt = PatchTools.patchSizeToMidpt(patchSize);
 		
-		Img<FloatType> mask = null;
+		
 //		Img<UnsignedByteType> mask = null;
-		try {
-			
-			mask = new ImgOpener().openImg(maskfn, ffactory,
-					new FloatType());
-			
-//			mask = new ImgOpener().openImg(maskfn, ubfactory,
-//					new UnsignedByteType());
-			
-			
-		} catch (ImgIOException e) {
-			e.printStackTrace();
-		}
+		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );
 
 		ArrayList<Edgel> edgels = SubpixelEdgelDetection.getEdgels(mask, mask.factory(), 10.0f);
 		logger.info("num edgels " + edgels.size());
@@ -253,9 +220,9 @@ public class EdgelOrientationVisValid {
 		}
 //		img.getImagePlus().show();
 		
-		
+		int[] patchSize = new int[]{7,7,3};
 		CrackCorrection<FloatType, FloatType> cc = new CrackCorrection<FloatType, FloatType>(
-				img, img);
+				img, img, patchSize);
 		
 		cc.computeEdgels();
 		
@@ -269,8 +236,7 @@ public class EdgelOrientationVisValid {
 		
 		int i = 0;
 		
-		int[] patchSize = new int[]{7,7,3};
-		int[] patchMidPt = EdgelTools.patchSizeToMidpt(patchSize);
+		int[] patchMidPt = PatchTools.patchSizeToMidpt(patchSize);
 		
 		while(i < N){
 			
@@ -294,10 +260,9 @@ public class EdgelOrientationVisValid {
 		}
 		
 		
-		
 		ImgUtil.write(edgelmaskimg, edgelMaskPrefix + ".tif");
 		ImgUtil.write(img, edgelPrefix + ".tif");
-
+ 
 		
 //		ImgUtil.write(mask, crackMaskRewriteFn);
 		
@@ -307,23 +272,9 @@ public class EdgelOrientationVisValid {
 		
 		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp_smooth.tif";
 		
-		ArrayImgFactory<FloatType> ffactory = new ArrayImgFactory<FloatType>();
-		ArrayImgFactory<UnsignedByteType> ubfactory = new ArrayImgFactory<UnsignedByteType>();
 		
-		Img<FloatType> mask = null;
-//		Img<UnsignedByteType> mask = null;
-		try {
-			
-			mask = new ImgOpener().openImg(maskfn, ffactory,
-					new FloatType());
-			
-//			mask = new ImgOpener().openImg(maskfn, ubfactory,
-//					new UnsignedByteType());
-			
-			
-		} catch (ImgIOException e) {
-			e.printStackTrace();
-		}
+		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );
+		
 		
 //		ArrayList<Integer> set = ImgUtil.uniqueInt(mask);
 //		Collections.sort(set);
