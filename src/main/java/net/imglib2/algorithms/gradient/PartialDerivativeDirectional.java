@@ -22,7 +22,7 @@ import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.ImgUtil;
+import net.imglib2.util.ImgOps;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
@@ -172,7 +172,7 @@ public class PartialDerivativeDirectional {
 		int fixedy = 1;
 		int cx     = 1;
 		Img<BitType> mask = factory.create(new long[]{nx, ny}, new BitType(true));
-		ImgUtil.fill(mask, new BitType(true));
+		ImgOps.fill(mask, new BitType(true));
 		RandomAccess<BitType> maskRa = mask.randomAccess();
 		maskRa.setPosition(new int[]{cx, fixedy});
 		
@@ -188,7 +188,7 @@ public class PartialDerivativeDirectional {
 		int fixedy = 1;
 		int cx     = 1;
 		Img<BitType> mask = factory.create(new long[]{nx, ny}, new BitType(true));
-		ImgUtil.fill(mask, new BitType(true));
+		ImgOps.fill(mask, new BitType(true));
 		RandomAccess<BitType> maskRa = mask.randomAccess();
 		
 		Cursor<BitType> maskCursor = mask.cursor();
