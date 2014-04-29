@@ -69,7 +69,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 	int[] patchSizeSub;
 
 	private int maxNumNormalSteps = 30;
-	private float edgelGradThresh = 20;
+	private double edgelGradThresh = 20;
 	
 	protected static Logger logger = LogManager.getLogger(CrackCorrection.class
 			.getName());
@@ -122,7 +122,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 		logger.info("num edgels " + edgels.size());
 
 	}
-	
+
 	public void setEdgels(ArrayList<Edgel> edgels){
 		this.edgels = edgels;
 	}
@@ -153,14 +153,14 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 	 * Returns the index k into the edgel list closest to the input
 	 * point.
 	 */
-	public int edgelIdxNearest(float[] pos) {
+	public int edgelIdxNearest(double[] pos) {
 		int i = -1;
 
-		float minDist = Float.MAX_VALUE;
+		double minDist = Double.MAX_VALUE;
 		int n = 0;
 		for (Edgel e : edgels) {
-			float f = ArrayUtil.sumSquares(ArrayUtil.subtract(pos,
-					e.getPosition()));
+			double f = ArrayUtil.sumSquares(
+					ArrayUtil.subtract(pos, e.getPosition()));
 			if (f < minDist) {
 				i = n;
 				minDist = f;
@@ -170,7 +170,6 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 
 		return i;
 	}
-	
 
 	
 	public Img<T> edgelToImageOld(Edgel edgel, Img<T> src, int[] patchSize) {
@@ -183,7 +182,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 		
 //		AffineTransform3D xfm = pickTransformation(edgel);
 		AffineTransform3D xfm = EdgelTools.edgelToXfm(edgel, midPt);
-		Img<T> res = normalPatch(ArrayUtil.toDouble(edgel.getPosition()),
+		Img<T> res = normalPatch(edgel.getPosition(),
 				patchSize, xfm, src);
 
 
@@ -761,8 +760,8 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 //		float[] tgtPos  = new float[]{ 66f, 290f, 13f };
 //		float[] tgtPos = new float[]{ 70f, 312f, 13f };
 //		float[] tgtPos = new float[] { 139f, 227f, 13f };
-//		float[] tgtPos = new float[] { 142, 221f, 16f };
-		float[] tgtPos = new float[] { 44f, 351f, 8f };
+		double[] tgtPos = new double[] { 142, 221f, 16f };
+//		double[] tgtPos = new double[] { 44f, 351f, 8f };
 
 		int i = cc.edgelIdxNearest(tgtPos);
 		String fnSuffix = "_"+i+".tif" ;
@@ -776,6 +775,8 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 		ImgOps.writeFloat( cc.imgPatch, 		imgPatchFn + fnSuffix );
 		
 		logger.warn("imgPatchFn + fnSuffix " + imgPatchFn + fnSuffix );
+		
+		
 //		
 //		cc.setEdgelMask( cc.edgels.get(i), patchSize);
 //		ImgUtil.writeByte( cc.edgelPatchMasks, 	edgelMaskPrefix + fnSuffix );
@@ -882,13 +883,13 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 				testImg, null, patchSize);
 
 		//float[] norm = new float[]{ 1.0f, 1.0f, 0.0f };
-		float[] norm = new float[] { 0.0f, 0.0f, 1.0f };
+		double[] norm = new double[] { 0.0f, 0.0f, 1.0f };
 		norm = ArrayUtil.normalizeLength(norm);
 
 		System.out.println(" normal vector: (" + ArrayUtil.printArray(norm)
 				+ ") ");
 
-		Edgel edgel = new Edgel(new float[] { 10.5f, 10.5f, 10.5f }, norm, 1);
+		Edgel edgel = new Edgel(new double[] { 10.5f, 10.5f, 10.5f }, norm, 1);
 
 		
 		 
@@ -910,13 +911,13 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 		System.out.println(" testImg: " + testImg);
 
 		//float[] norm = new float[]{ 1.0f, 1.0f, 0.0f };
-		float[] norm = new float[] { 0.0f, 0.0f, 1.0f };
+		double[] norm = new double[] { 0.0f, 0.0f, 1.0f };
 		norm = ArrayUtil.normalizeLength(norm);
 
 		System.out.println(" normal vector: (" + ArrayUtil.printArray(norm)
 				+ ") ");
 
-		Edgel edgel = new Edgel(new float[] { 10.5f, 10.5f, 10.5f }, norm, 1);
+		Edgel edgel = new Edgel(new double[] { 10.5f, 10.5f, 10.5f }, norm, 1);
 		System.out.println("edgel : " + edgel);
 
 		NLinearInterpolatorFactory<FloatType> interpFactory = new NLinearInterpolatorFactory<FloatType>();
@@ -1333,8 +1334,8 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 //		Img<FloatType> dpth = cfactory.create( new int[]{17,17}, new FloatType(0) );
 		
 		Edgel edgel = new Edgel(
-				new float[] { 15f, 15f, 15f }, 
-				new float[] { 0f, 0f, 1f },
+				new double[] { 15f, 15f, 15f }, 
+				new double[] { 0f, 0f, 1f },
 				1);
 
 		

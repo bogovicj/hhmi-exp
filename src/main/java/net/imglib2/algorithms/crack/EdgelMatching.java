@@ -2,8 +2,8 @@ package net.imglib2.algorithms.crack;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
-import net.imglib2.Cursor;
 import net.imglib2.algorithm.edge.Edgel;
 import net.imglib2.algorithms.edge.EdgelTools;
 import net.imglib2.collection.KDTree;
@@ -15,6 +15,7 @@ import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.util.LinAlgHelpers;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -41,7 +42,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	private HashMap<EdgelPair, Double> edgelAffinities;
 
 	// search parameters 
-	private double edgelSearchRadius = 15;
+	private double edgelSearchRadius = 5;
 	private int    edgelSearchCount  = 15;
 	private SearchTypes	search = SearchTypes.RADIUS;
 	private KNearestNeighborSearchOnKDTree<Edgel>  countSearch;
@@ -60,6 +61,26 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		this.mask = mask;
 
 		this.patchSize = patchSize;
+	}
+	
+	public void setSearchType( SearchTypes searchType ){
+		this.search = searchType;
+	}
+
+	public double getEdgelSearchRadius() {
+		return edgelSearchRadius;
+	}
+
+	public void setEdgelSearchRadius(double edgelSearchRadius) {
+		this.edgelSearchRadius = edgelSearchRadius;
+	}
+
+	public int getEdgelSearchCount() {
+		return edgelSearchCount;
+	}
+
+	public void setEdgelSearchCount(int edgelSearchCount) {
+		this.edgelSearchCount = edgelSearchCount;
 	}
 
 	/**
@@ -100,7 +121,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	{
 		ArrayList<Edgel> out = new ArrayList<Edgel>();
 		
-		radiusSearch.search( e, edgelSearchRadius, false);
+		radiusSearch.search( e, getEdgelSearchRadius(), false);
 		for( int i=0; i<radiusSearch.numNeighbors(); i++ )
 		{
 			out.add( radiusSearch.getSampler(i).get() );
@@ -111,7 +132,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	
 	public ArrayList<Edgel> candidateEdgelsK(Edgel e)
 	{
-		ArrayList<Edgel> out = new ArrayList<Edgel>( edgelSearchCount );
+		ArrayList<Edgel> out = new ArrayList<Edgel>( getEdgelSearchCount() );
 		
 		countSearch.search( e );
 		for( int i=0; i<countSearch.getK(); i++ )
@@ -121,6 +142,24 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		
 		return out;
 	}
+	
+	/**
+	 * Removes an edgel from the candidate list if its normal direction 
+	 * points in the opposite direction as the reference Edgel e. 
+	 * ( i.e. if scalar product with ref is negative ).  
+	 * @param e
+	 * @param candidates
+	 */
+	public void filterEdgelsByNormal(Edgel e, List<Edgel> candidates)
+	{
+		
+		for(int i=0; i<candidates.size(); i++)
+		{
+			if( LinAlgHelpers.dot(e.getGradient(), candidates.get(i).getGradient()) >= 0 )
+				candidates.remove(i);
+		}
+	}
+
 
 	/**
 	 * Computes a likelihood that edgels i and j are a match.
@@ -156,6 +195,8 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	 */
 	public void computeAllAffinities()
 	{
+		logger.info("Computing edgel affinities");
+		
 		ArrayImgFactory<T> factory = new ArrayImgFactory<T>(); 
 		depth1 = factory.create(ArrayUtil.toLong(patchSize), img.firstElement());
 		depth2 = factory.create(ArrayUtil.toLong(patchSize), img.firstElement());
@@ -164,11 +205,11 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		switch ( search )
 		{
 		case COUNT:
-			countSearch = new  KNearestNeighborSearchOnKDTree<Edgel>( edgelTree, edgelSearchCount);
-			
+			countSearch = new  KNearestNeighborSearchOnKDTree<Edgel>( edgelTree, getEdgelSearchCount());
+			logger.info("" + getEdgelSearchCount() +"-Nearest neighbor search");
 		default:
 			radiusSearch = new  RadiusNeighborSearchOnKDTree<Edgel>( edgelTree );
-
+			logger.info("" + getEdgelSearchRadius()+  " radius search");
 		}
 		
 		edgelAffinities = new HashMap<EdgelPair,Double>();
@@ -176,9 +217,11 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		int i = 0;
 		for (Edgel e : edgels )
 		{
-			logger.debug("edgel " + i + " of " + numEdgels);
+//			logger.debug("edgel " + i + " of " + numEdgels);
 			
 			ArrayList<Edgel> candidateEdgels = candidateEdgels(e);
+			filterEdgelsByNormal(e, candidateEdgels);
+			
 			logger.debug(" found " + candidateEdgels.size() + " candidate matches.");
 //			
 //			
@@ -196,6 +239,10 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 //			}
 //
 			i++;
+			
+			// for debug 
+			if( i > 20 ) break;
+			
 		}
 
 	}
@@ -273,8 +320,8 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		public int compare(Edgel i, Edgel j){
 			
 			int nd = i.numDimensions();
-			float[] ipos = i.getPosition();
-			float[] jpos = j.getPosition();	
+			double[] ipos = i.getPosition();
+			double[] jpos = j.getPosition();	
 			for (int d=0; d<nd; d++)
 			{
 				if( ipos[d] < jpos[d] ){
