@@ -94,8 +94,8 @@ public class EdgelMatchingExps {
 		System.out.println(" edgels float size: " + edgelsf.size());
 		
 		for(int i=0; i<20; i++){
-			System.out.println("d " + ArrayUtil.printArray( edgels.get(i).getPosition()));
-			System.out.println("f " + ArrayUtil.printArray( edgelsf.get(i).getPosition()));
+			System.out.println("d " + edgels.get(i) );
+//			System.out.println("f " + edgelsf.get(i) );
 			System.out.println(" ");
 		}
 		
@@ -103,11 +103,11 @@ public class EdgelMatchingExps {
 	
 	public static void main(String[] args) {
 
-		tryMatching();
+//		tryMatching();
 		
 //		stupdidRadiusSearchTest();
 //		
-//		edgelTypeValidate();
+		edgelTypeValidate();
 		
 		System.out.println("crack correction finished");
 		System.exit(0);

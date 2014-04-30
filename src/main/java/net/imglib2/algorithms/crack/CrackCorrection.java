@@ -158,9 +158,11 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 
 		double minDist = Double.MAX_VALUE;
 		int n = 0;
+		double[] edgelPos = new double[pos.length];
 		for (Edgel e : edgels) {
+			e.localize(edgelPos);
 			double f = ArrayUtil.sumSquares(
-					ArrayUtil.subtract(pos, e.getPosition()));
+					ArrayUtil.subtract(pos, edgelPos ));
 			if (f < minDist) {
 				i = n;
 				minDist = f;
@@ -174,16 +176,13 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 	
 	public Img<T> edgelToImageOld(Edgel edgel, Img<T> src, int[] patchSize) {
 
-		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
-		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
-		logger.info(" edgel mag : " + edgel.getMagnitude());
-
 		int[] midPt = PatchTools.patchSizeToMidpt(patchSize);
 		
 //		AffineTransform3D xfm = pickTransformation(edgel);
 		AffineTransform3D xfm = EdgelTools.edgelToXfm(edgel, midPt);
-		Img<T> res = normalPatch(edgel.getPosition(),
-				patchSize, xfm, src);
+		double[] pos = new double[edgel.numDimensions()];
+		edgel.localize(pos);
+		Img<T> res = normalPatch( pos, patchSize, xfm, src);
 
 
 		return res;
@@ -191,9 +190,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 	
 	public void edgelToImage(Edgel edgel, Img<T> src, int[] patchSize) {
 
-		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
-		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
-		logger.info(" edgel mag : " + edgel.getMagnitude());
+		logger.info(" " + edgel );
 
 		RealTransformRandomAccessible<T, InverseRealTransform> view = EdgelTools.edgelToView(edgel, src, patchSize);
 		ImgOps.copyInto(view, imgPatch);
@@ -331,8 +328,8 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 	{
 		int[] midPt = PatchTools.patchSizeToMidpt(patchSize);
 		AffineTransform3D xfm = EdgelTools.edgelToXfm(edgel, midPt);
-		
-		CrackCorrection.setMask( edgel.getPosition(), patchSize, xfm, edgelPatchMasks, 
+		double[] pos = new double[ edgel.numDimensions() ];
+		CrackCorrection.setMask( pos, patchSize, xfm, edgelPatchMasks, 
 				new UnsignedByteType(b));
 		
 	}
@@ -1393,12 +1390,14 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 		cc.computeEdgels();
 		
 		int i = 0;
+		double[] pos = new double[ mask.numDimensions() ];
 		for (Edgel e : cc.edgels){
+			e.localize(pos);
 //			System.out.println(" edgel: " + e);
-			if( e.getPosition()[0] > 5 && 
-				e.getPosition()[0] < 8 && 
-				e.getPosition()[1] > 5 && 
-				e.getPosition()[1] < 8 ) 
+			if( pos[0] > 5 && 
+				pos[0] < 8 && 
+				pos[1] > 5 && 
+				pos[1] < 8 ) 
 			{
 //				System.out.println(" edgel ("+i+") at: " + ArrayUtil.printArray(e.getPosition()));
 			}
@@ -1407,7 +1406,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>, B extends Re
 		
 		
 		Edgel edgel = cc.edgels.get(--i);
-		System.out.println(" edgel ("+i+") at: " + ArrayUtil.printArray(edgel.getPosition()));
+		System.out.println(" ("+i+") at: " + edgel );
 		
 		cc.computeCrackDepthNormalMask(edgel);
 

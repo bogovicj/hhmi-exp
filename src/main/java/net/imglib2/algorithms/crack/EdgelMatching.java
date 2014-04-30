@@ -320,8 +320,10 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		public int compare(Edgel i, Edgel j){
 			
 			int nd = i.numDimensions();
-			double[] ipos = i.getPosition();
-			double[] jpos = j.getPosition();	
+			double[] ipos = new double[ i.numDimensions() ];
+			i.localize(ipos);
+			double[] jpos = new double[ j.numDimensions() ];
+			j.localize(jpos);
 			for (int d=0; d<nd; d++)
 			{
 				if( ipos[d] < jpos[d] ){
