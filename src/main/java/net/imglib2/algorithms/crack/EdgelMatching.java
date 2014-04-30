@@ -4,17 +4,23 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import net.imglib2.RandomAccess;
+import net.imglib2.RandomAccessible;
 import net.imglib2.algorithm.edge.Edgel;
 import net.imglib2.algorithms.edge.EdgelTools;
 import net.imglib2.collection.KDTree;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
+import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.neighborsearch.KNearestNeighborSearchOnKDTree;
 import net.imglib2.neighborsearch.RadiusNeighborSearchOnKDTree;
 import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.ImgOps;
 import net.imglib2.util.LinAlgHelpers;
 
 import org.apache.log4j.LogManager;
@@ -47,6 +53,8 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	private SearchTypes	search = SearchTypes.RADIUS;
 	private KNearestNeighborSearchOnKDTree<Edgel>  countSearch;
 	private RadiusNeighborSearchOnKDTree<Edgel>    radiusSearch;
+	
+	int i, j;
 	
 	// comparison parameters
 	private double lam = 0.5;
@@ -153,9 +161,11 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	public void filterEdgelsByNormal(Edgel e, List<Edgel> candidates)
 	{
 		
-		for(int i=0; i<candidates.size(); i++)
+		for(int i=candidates.size()-1; i>=0; i--)
 		{
-			if( LinAlgHelpers.dot(e.getGradient(), candidates.get(i).getGradient()) >= 0 )
+			double dot = LinAlgHelpers.dot(e.getGradient(), candidates.get(i).getGradient());
+			logger.trace(" dot " + dot);
+			if(  dot >= 0 )
 				candidates.remove(i);
 		}
 	}
@@ -188,7 +198,78 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		
 		return -1;
 	}
+	
+	/**
+	 * Computes an affinity between two edgels using only geometrical information.
+	 * <P>
+	 * dist(e1,e1) + lam * dot
+	 * @param e1 first edgel
+	 * @param e2 second edgel
+	 * @param lam contribution of normal vector
+	 * @return
+	 */
+	
+	public double edgelAffinitiesGeom ( Edgel e1, Edgel e2, double lam )
+	{
+		double dot = -LinAlgHelpers.dot( e1.getGradient(), e2.getGradient() );
+		
+		double[] p1 = new double[e1.numDimensions()];
+		e1.localize(p1);
+		double[] p2 = new double[e1.numDimensions()];
+		e2.localize(p2);
+		
+		double aff = LinAlgHelpers.squareLength( 
+				ArrayUtil.subtract( p1, p2 ) );
+		
+		return ( 1 - lam ) * aff + ( lam * aff ) * dot ;
+	}
 
+	/**
+	 *
+	 */
+	public void testAffinitiesReg()
+	{
+		logger.info("Computing edgel affinities");
+		
+		ArrayImgFactory<T> factory = new ArrayImgFactory<T>(); 
+		depth1 = factory.create(ArrayUtil.toLong(patchSize), img.firstElement());
+		depth2 = factory.create(ArrayUtil.toLong(patchSize), img.firstElement());
+		
+		edgelTree = new KDTree<Edgel>( edgels, edgels );
+		switch ( search )
+		{
+		case COUNT:
+			countSearch = new  KNearestNeighborSearchOnKDTree<Edgel>( edgelTree, getEdgelSearchCount());
+			logger.info("" + getEdgelSearchCount() +"-Nearest neighbor search");
+		default:
+			radiusSearch = new  RadiusNeighborSearchOnKDTree<Edgel>( edgelTree );
+			logger.info("" + getEdgelSearchRadius()+  " radius search");
+		}
+		
+		edgelAffinities = new HashMap<EdgelPair,Double>();
+
+//		int i = 12725;
+		
+		
+//		i = cc.edgelIdxNearest(new double[]{67,290,13});
+		
+		Edgel e = edgels.get(i);
+		logger.debug("i: " + i + "   " + e);
+
+		ArrayList<Edgel> candidateEdgels = candidateEdgels(e);
+		logger.debug(" " + candidateEdgels.size() + " matches after search");
+
+		filterEdgelsByNormal(e, candidateEdgels);
+
+		logger.debug(" " + candidateEdgels.size() + " matches after filtering.");
+
+		if( candidateEdgels.size() == 0 ){ 
+			logger.error(" no edgel matches left ");
+			return;
+		}
+		
+	}
+	
 
 	/**
 	 *
@@ -217,27 +298,23 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		int i = 0;
 		for (Edgel e : edgels )
 		{
-//			logger.debug("edgel " + i + " of " + numEdgels);
+			logger.debug("edgel " + i + " of " + numEdgels);
 			
 			ArrayList<Edgel> candidateEdgels = candidateEdgels(e);
+			logger.debug(" " + candidateEdgels.size() + " matches after search");
+			
 			filterEdgelsByNormal(e, candidateEdgels);
 			
-			logger.debug(" found " + candidateEdgels.size() + " candidate matches.");
-//			
-//			
-//			for( Edgel ec : candidateEdgels )
-//			{
-//				EdgelPair pair = new EdgelPair(e, ec);
-//			
-//				// if we already have this affinity skip the computation
-//				if( edgelAffinities.containsKey(pair) ) continue;	
-//
-//				double affinity = edgelAffinities( e, ec ); 
-//
-//				edgelAffinities.put(pair, affinity);
-//
-//			}
-//
+			logger.debug(" " + candidateEdgels.size() + " matches after filtering.");
+
+//			tabulateAffinities( e, candidateEdgels );
+			
+			int j = maxAffinityEdgelIdx( e, candidateEdgels );
+			debugVisEdgelView( i, e, candidateEdgels.get(j) );
+			
+			
+//			debugVisEdgelMatches( i, e, candidateEdgels );
+			
 			i++;
 			
 			// for debug 
@@ -245,6 +322,93 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 			
 		}
 
+	}
+	
+	public int maxAffinityEdgelIdx( Edgel e, List<Edgel> matches)
+	{
+		double maxAffinity = Double.MIN_VALUE;
+		int    idxOut = -1;
+		
+		for( int i = 0 ; i<matches.size(); i++)
+		{
+			Edgel ec = matches.get(i);
+			double affinity = edgelAffinitiesGeom( e, ec, 0.5 ); 
+			if ( affinity > maxAffinity ){
+				maxAffinity = affinity;
+				idxOut = i;
+			}
+		}
+		return idxOut;
+	}
+	
+	public void tabulateAffinities( Edgel e, List<Edgel> matches)
+	{
+		for( Edgel ec : matches )
+		{
+			EdgelPair pair = new EdgelPair(e, ec);
+			
+			// if we already have this affinity skip the computation
+			if( edgelAffinities.containsKey(pair) ) continue;	
+
+			double affinity = edgelAffinities( e, ec ); 
+
+			edgelAffinities.put(pair, affinity);
+		}
+	}
+	
+	
+	public void debugVisEdgelView(int i, Edgel e, Edgel f){
+		RandomAccessible<T> ev = 
+				EdgelTools.edgelToView(e, img, patchSize);
+		
+		RandomAccessible<T> fv = 
+				EdgelTools.edgelToView(f, img, patchSize);
+		
+//		ArrayImgFactory<T> ubfactory = new ArrayImgFactory<T>();
+		ImagePlusImgFactory<T> ipfactory = new ImagePlusImgFactory<T>(); 
+		
+		Img<T> ePatchImg = ipfactory.create(patchSize, mask.firstElement());
+		Img<T> fPatchImg = ipfactory.create(patchSize, mask.firstElement());
+		
+		logger.debug( " copying " );
+		ImgOps.copyInto(ev, ePatchImg);
+		ImgOps.copyInto(fv, fPatchImg);
+		logger.debug( " done copying " );
+		
+		logger.debug( " writing patches " );
+		ImgOps.writeFloat( ePatchImg, 
+				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patch_%03d.tif",i));
+		ImgOps.writeFloat( fPatchImg, 
+				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patch_%03d_match.tif",i));
+		logger.debug( " done writing patches " );
+	}
+	
+	public void debugVisEdgelMatches(int i, Edgel e, List<Edgel> matches){
+		
+		String outFn = "/groups/jain/home/bogovicj/projects/crackPatching/edgelMatching";
+		
+		ArrayImgFactory<UnsignedByteType> ubfactory = new ArrayImgFactory<UnsignedByteType>();
+		Img<UnsignedByteType> edgelMatchImg = ubfactory.create(mask, new UnsignedByteType());
+		RandomAccess<UnsignedByteType> emiRa = edgelMatchImg.randomAccess();
+		
+		double[] pos = new double[e.numDimensions()];
+		e.localize(pos);
+		
+		emiRa.setPosition( ArrayUtil.toIntRound(pos));
+		emiRa.get().set( 255 );
+		
+		for ( Edgel match : matches )
+		{
+			match.localize(pos);
+			emiRa.setPosition( ArrayUtil.toIntRound(pos));
+			emiRa.get().set( 128 );
+		}
+		
+//		logger.debug( "nnz: " + ImgOps.numNonZero(edgelMatchImg) );
+		
+		logger.debug( " writing match " );
+		ImgOps.writeByte(edgelMatchImg, outFn + "/edgelMatches_" + i + ".tif");
+		logger.debug( " done writing " );
 	}
 	
 //	/**

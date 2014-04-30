@@ -182,9 +182,7 @@ public class EdgelTools {
 
 	public static AffineTransform3D edgelTransformation(Edgel edgel){
 
-		float[] nrm = edgel.getGradient();
-
-		DenseMatrix64F normMtx = new DenseMatrix64F( new double[][]{ ArrayUtil.toDouble(nrm) } );
+		DenseMatrix64F normMtx = new DenseMatrix64F( new double[][]{ edgel.getGradient() } );
 		DenseMatrix64F remMtx = remainderSubspace(normMtx);
 		logger.debug("rem Mtx: " + remMtx );
 
@@ -196,7 +194,7 @@ public class EdgelTools {
 			Ra[i][2] = normMtx.get(i);
 		}
 
-		logger.info(" Ra: \n" + ArrayUtil.printArray(Ra) );
+		logger.debug(" Ra: \n" + ArrayUtil.printArray(Ra) );
 
 		AffineTransform3D R = new AffineTransform3D();
 		R.set(Ra);
@@ -213,11 +211,12 @@ public class EdgelTools {
 
 		int ndims_in = midPt.length;
 		double[] target = new double[ndims_in];
-
-
+		double[] pos = new double[ edgel.numDimensions() ];
+		edgel.localize(pos);
+		
 		xfm.apply( ArrayUtil.toDouble(midPt), target );
-		double[] diff = ArrayUtil.subtract(
-				ArrayUtil.toDouble(edgel.getPosition()), target);
+		
+		double[] diff = ArrayUtil.subtract( pos, target );
 
 		for (int i = 0; i < ndims_in; i++) {
 			xfm.set(diff[i], i, ndims_in);
@@ -240,9 +239,7 @@ public class EdgelTools {
 	 */
 	public static <T extends RealType<T>> RealTransformRandomAccessible<T, InverseRealTransform> edgelToView(Edgel edgel, RandomAccessibleInterval<T> src, int[] patchSize) 
 	{
-		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
-		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
-		logger.info(" edgel mag : " + edgel.getMagnitude());
+		logger.info(" edgel pos : " + edgel);
 
 		int[] midPt = PatchTools.patchSizeToMidpt( patchSize ); 	
 		AffineTransform3D xfm = edgelToXfm(edgel, midPt);

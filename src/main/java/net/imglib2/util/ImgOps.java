@@ -19,6 +19,7 @@ import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.exception.ImgLibException;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImg;
@@ -53,8 +54,20 @@ public class ImgOps {
 		}
 	}
 	
-	public static void writeFloat(Img<FloatType> img, String fn)
+	public static <T  extends RealType<T> & NativeType<T>> void writeFloat(Img<T> img, String fn)
 	{
+		logger.debug(" write float ");
+		if( img instanceof ImagePlusImg ){
+			logger.debug(" ij save ");
+			try {
+				IJ.save(((ImagePlusImg) img).getImagePlus(), fn);
+			} catch (ImgLibException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			logger.debug(" save done");
+			return;
+		}
 		try
 		{
 			ImagePlus ipdp = mimicImagePlusFloat( img, "name" );
@@ -64,8 +77,10 @@ public class ImgOps {
 			}else if(img.numDimensions()==3){
 				copyToImageProcessor3dFloat(img, ipdp);
 			}
-			
+		
+			logger.debug(" ij save ");
 			IJ.save(ipdp, fn);
+			logger.debug(" save done");
 		}
 		catch(Exception e)
 		{
@@ -106,8 +121,9 @@ public class ImgOps {
 			e.printStackTrace();
 		}
 	}
-	public static ImagePlus mimicImagePlusFloat(Img<FloatType> img, String name)
+	public static <T extends RealType<T> & NativeType<T>> ImagePlus mimicImagePlusFloat(Img<T> img, String name)
 	{
+		logger.debug(" mimic image plus float ");
 		ImagePlus ip = null;
 		if(img.numDimensions()==2){
 			FloatProcessor fp = new FloatProcessor(
@@ -123,7 +139,7 @@ public class ImgOps {
 					32);
 			ip = new ImagePlus(name, stack);
 		}
-		
+		logger.debug(" done mimic ");
 		return ip;
 	}
 	public static <T extends GenericByteType<T>> ImagePlus mimicImagePlusByte(
@@ -193,9 +209,9 @@ public class ImgOps {
 			
 		}
 	}
-	public static void copyToImageProcessor2dFloat(Img<FloatType> img, ImageProcessor ip) throws Exception {
+	public static <T extends RealType<T> & NativeType<T>> void copyToImageProcessor2dFloat(Img<T> img, ImageProcessor ip) throws Exception {
 		
-		Cursor<FloatType> c_in  = img.cursor();
+		Cursor<T> c_in  = img.cursor();
 		
 		while(c_in.hasNext()){
 			c_in.fwd();
@@ -206,12 +222,16 @@ public class ImgOps {
 		}
 	}
 	
-	public static void copyToImageProcessor3dFloat(Img<FloatType> img, ImagePlus ip) throws Exception {
+	public static <T extends RealType<T> & NativeType<T>> void copyToImageProcessor3dFloat(Img<T> img, ImagePlus ip) throws Exception {
 		
-		Cursor<FloatType> c_in  = img.cursor();
-		
+		Cursor<T> c_in  = img.cursor();
+		logger.debug("copying to float 3d");
+		int i = 0;
 		while(c_in.hasNext()){
 			c_in.fwd();
+			
+//			if ( i%1000 == 0 ) {logger.debug(" c_in " + (i++) ); }
+//			else{ i++; }
 			
 			ImageProcessor fp = ip.getStack().getProcessor(c_in.getIntPosition(2)+1);
 			
@@ -219,6 +239,7 @@ public class ImgOps {
 					c_in.get().getRealFloat());
 			
 		}
+		logger.debug("done copying");
 	}
 	public static <T extends GenericByteType<T>> void copyToImageProcessor3dByte(Img<T> img, ImagePlus ip) throws Exception {
 		
@@ -601,17 +622,17 @@ public class ImgOps {
 
    }
    
-   public static < T extends Type< T >> void copyInto(
-		   RandomAccessible<T> src, 
-		   IterableInterval<T> dest)
+   public static < A extends RealType<A>, B extends RealType<B>> void copyInto(
+		   RandomAccessible<A> src, 
+		   IterableInterval<B> dest)
    {
-	   Cursor<T> c_dest  = dest.cursor();
-	   RandomAccess<T> ra = src.randomAccess();
+	   Cursor<B> c_dest  = dest.cursor();
+	   RandomAccess<A> ra = src.randomAccess();
 
 	   while(c_dest.hasNext()){
 		   c_dest.fwd();
 		   ra.setPosition(c_dest);
-		   c_dest.get().set(ra.get());
+		   c_dest.get().setReal( ra.get().getRealDouble() );
 //		   System.out.println(" ra.get: " + ra.get());
 	   }
    }

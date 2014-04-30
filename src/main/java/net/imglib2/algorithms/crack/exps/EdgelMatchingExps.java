@@ -2,7 +2,6 @@ package net.imglib2.algorithms.crack.exps;
 
 import java.util.ArrayList;
 
-import edu.jhu.ece.iacl.utility.ArrayUtil;
 import ij.IJ;
 import net.imglib2.RealPoint;
 import net.imglib2.algorithm.edge.Edgel;
@@ -18,9 +17,33 @@ import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.neighborsearch.RadiusNeighborSearchOnKDTree;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.ImgOps;
 
 public class EdgelMatchingExps {
 
+	public static void tryMatchRegistration() 
+	{
+		String imgfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/crackVolDown_cp.tif";
+		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp_smooth.tif";
+		int[] patchSize = new int[] { 19, 19, 13 };
+		
+		Img<FloatType> img =  ImagePlusAdapter.convertFloat( IJ.openImage(imgfn) );
+		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );
+
+		CrackCorrection<FloatType> cc = new CrackCorrection<FloatType>(
+				img, mask, patchSize);
+		cc.computeEdgels();
+		
+		int i = cc.edgelIdxNearest(new double[]{67,290,13});
+		int j = cc.edgelIdxNearest(new double[]{69,311,13});
+		
+		System.out.println(" i: " + i + "  " + cc.getEdgels().get(i));
+		System.out.println(" j: " + j + "  " + cc.getEdgels().get(j));
+	
+		cc.registerEdgelsOrient( cc.getEdgels().get(i), cc.getEdgels().get(j), i);
+		
+	}
+	
 	public static void tryMatching() 
 	{
 		String imgfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/crackVolDown_cp.tif";
@@ -30,10 +53,11 @@ public class EdgelMatchingExps {
 		Img<FloatType> img =  ImagePlusAdapter.convertFloat( IJ.openImage(imgfn) );
 		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );
 
-		CrackCorrection<FloatType, FloatType> cc = new CrackCorrection<FloatType, FloatType>(
+		CrackCorrection<FloatType> cc = new CrackCorrection<FloatType>(
 				img, mask, patchSize);
 		
 		cc.computeEdgels();
+//		cc.edgelIdxImg();
 		
 //		ArrayList<Edgel> edgels = cc.getEdgels();
 //		int i =0;
@@ -49,10 +73,10 @@ public class EdgelMatchingExps {
 //		em.setEdgelSearchRadius(20);
 		
 		em.setSearchType( EdgelMatching.SearchTypes.COUNT );
-		em.setEdgelSearchCount(50);
+		em.setEdgelSearchCount(2000);
 		
-		em.computeAllAffinities();
-		
+//		em.computeAllAffinities();
+		em.testAffinitiesReg();
 		
 	}
 	
@@ -105,9 +129,11 @@ public class EdgelMatchingExps {
 
 //		tryMatching();
 		
+		tryMatchRegistration();
+		
 //		stupdidRadiusSearchTest();
 //		
-		edgelTypeValidate();
+//		edgelTypeValidate();
 		
 		System.out.println("crack correction finished");
 		System.exit(0);
