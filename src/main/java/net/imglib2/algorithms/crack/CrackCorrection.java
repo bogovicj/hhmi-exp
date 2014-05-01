@@ -20,6 +20,7 @@ import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.img.*;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.iterator.IntervalIterator;
+import net.imglib2.realtransform.AffineTransform;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
@@ -27,6 +28,7 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.*;
 import net.imglib2.type.numeric.integer.*;
 import net.imglib2.type.numeric.real.*;
+import net.imglib2.view.IntervalView;
 import net.imglib2.view.MixedTransformView;
 import net.imglib2.view.Views;
 import net.imglib2.util.*;
@@ -188,12 +190,57 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 		computeCrackDepthNormalMask( f );	
 		sampleImgByDepth( f, fPatch );
 		
-		ImgOps.writeFloat( ePatch, 
-				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patchDepthSamp_test.tif"));
-
-		ImgOps.writeFloat( fPatch, 
-				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patchDepthSamp_test_match.tif"));
+//		ImgOps.writeFloat( ePatch, 
+//				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patchDepthSamp_test.tif"));
+//		ImgOps.writeFloat( fPatch, 
+//				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patchDepthSamp_test_match.tif"));
 		
+//		Img<T> ePatch2 = ImgOps.collapseSum(ePatch);
+//		Img<T> fPatch2 = ImgOps.collapseSum(fPatch);
+		
+		int[] midPt = PatchTools.patchSizeToMidpt(patchSize);
+		int zdim = midPt.length - 1; 
+		
+		IntervalView<T> ePatch2 = Views.hyperSlice( ePatch, zdim, midPt[zdim] );
+		IntervalView<T> fPatch2 = Views.hyperSlice( fPatch, zdim, midPt[zdim] );
+		
+		ImgMoment eMom = new ImgMoment();
+		double[] eOr = eMom.orientation( Views.iterable( ePatch2 ));
+		eMom.orientationEvalsEvecs(eOr);
+		
+		ImgMoment fMom = new ImgMoment();
+		double[] fOr = fMom.orientation(Views.iterable( fPatch2 ));
+		fMom.orientationEvalsEvecs(fOr);
+		
+		logger.debug("e vecs: " + ArrayUtil.printArray(eMom.getEvecs()));
+		logger.debug("f vecs: " + ArrayUtil.printArray(fMom.getEvecs()));
+		
+//		long[] min = new long[ePatch2.numDimensions()];
+//		ePatch2.min(min);
+//		long[] max = new long[ePatch2.numDimensions()];
+//		ePatch2.max(max);
+//		IntervalIterator itvl = new IntervalIterator( min, max );
+//		
+//		logger.debug(" patchout min: " + ArrayUtil.printArray(min));
+//		logger.debug(" patchout max: " + ArrayUtil.printArray(max));
+//		
+//		ImagePlusImg<T, ?> ePatch2out = ipfactory.create(itvl, img.firstElement());
+//		ImgOps.copyInto(ePatch2, ePatch2out);
+//		ImgOps.writeFloat( ePatch2out, 
+//				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patchDepthSamp_test_mid.tif"));
+//
+//		ImagePlusImg<T, ?> fPatch2out = ipfactory.create(itvl, img.firstElement());
+//		ImgOps.copyInto(fPatch2, fPatch2out);
+//		ImgOps.writeFloat( fPatch2out, 
+//				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patchDepthSamp_test_mid_match.tif"));
+		
+		
+		
+	}
+	
+	public void registerEdgels(){
+//		Align< FloatType > align = new Align< FloatType >( template, factory );
+//		AffineTransform transform = align.align( image, 500, 0.01 );
 	}
 	
 	public Img<T> edgelToImageOld(Edgel edgel, Img<T> src, int[] patchSize) {

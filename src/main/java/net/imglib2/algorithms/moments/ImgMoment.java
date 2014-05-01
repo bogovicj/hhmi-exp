@@ -1,6 +1,8 @@
 package net.imglib2.algorithms.moments;
 
 import net.imglib2.Cursor;
+import net.imglib2.IterableInterval;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
 
@@ -60,7 +62,7 @@ public class ImgMoment {
 	}
 
 
-	public static <T extends RealType<T>> double moment0( Img<T> img ){
+	public static <T extends RealType<T>> double moment0( IterableInterval<T> img ){
 		logger.debug("moment 0 ");
 
 		double mom = 0; 
@@ -74,7 +76,7 @@ public class ImgMoment {
 		return mom;
 	}
 
-	public static <T extends RealType<T>> double[] moment1( Img<T> img ){
+	public static <T extends RealType<T>> double[] moment1( IterableInterval<T> img ){
 		logger.debug("moments 1 all ");
 
 		int nd = img.numDimensions();
@@ -95,7 +97,7 @@ public class ImgMoment {
 		return mom;
 	}
 
-	public static <T extends RealType<T>> double moment1( Img<T> img, int d ){
+	public static <T extends RealType<T>> double moment1( IterableInterval<T> img, int d ){
 		logger.debug("moment 1 ");
 
 		double mom = 0; 
@@ -118,7 +120,7 @@ public class ImgMoment {
 		return mom;
 	}
 
-	public static <T extends RealType<T>> double[] moment2( Img<T> img ){
+	public static <T extends RealType<T>> double[] moment2( IterableInterval<T> img ){
 		logger.debug("moments 2 all ");
 
 		int nd = img.numDimensions();
@@ -140,7 +142,7 @@ public class ImgMoment {
 		return mom;
 	}
 
-	public static <T extends RealType<T>> double moment2( Img<T> img, int d ){
+	public static <T extends RealType<T>> double moment2( IterableInterval<T> img, int d ){
 		int nd = img.numDimensions();
 		logger.debug("moment 2 central for d " + d + " for " + nd + " dims");
 
@@ -186,7 +188,7 @@ public class ImgMoment {
 		return mom;
 	}
 
-	public static <T extends RealType<T>> double moment(Img<T> img, int moment, int d){
+	public static <T extends RealType<T>> double moment(IterableInterval<T> img, int moment, int d){
 
 		int nd = img.numDimensions();
 
@@ -213,7 +215,7 @@ public class ImgMoment {
 		return mom;
 	}
 
-	public <T extends RealType<T>> double[] orientation(Img<T> img){
+	public <T extends RealType<T>> double[] orientation(IterableInterval<T> img){
 		nd = img.numDimensions();
 		logger.debug("orientation for " + nd + " dims" );
 		double[] cov = new double[nd*nd];
@@ -274,7 +276,7 @@ public class ImgMoment {
 	}
 	
 	/** 
-	 * Returns a 12-vector
+	 * Computes a 12-vector
 	 * The first element is the largest eigenvalue
 	 * The next 3 elements are its associated eigenvector
 	 * 

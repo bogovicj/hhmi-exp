@@ -19,23 +19,27 @@ import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.exception.ImgLibException;
 import net.imglib2.img.Img;
+import net.imglib2.img.ImgFactory;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
+import net.imglib2.iterator.IntervalIterator;
+import net.imglib2.meta.IntervalUtils;
 import net.imglib2.ops.operation.randomaccessibleinterval.unary.DistanceMap;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.Type;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.AbstractIntegerType;
-import net.imglib2.type.numeric.integer.ByteType;
 import net.imglib2.type.numeric.integer.GenericByteType;
 import net.imglib2.type.numeric.integer.GenericShortType;
-import net.imglib2.type.numeric.integer.IntType;
-import net.imglib2.type.numeric.integer.ShortType;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.view.IntervalView;
+import net.imglib2.view.Views;
+import net.imglib2.view.composite.CompositeIntervalView;
+import net.imglib2.view.composite.RealComposite;
 
 public class ImgOps {
 
@@ -269,6 +273,41 @@ public class ImgOps {
 			
 		}
 	}
+	
+	public static <T extends RealType<T>> Img<T> collapseSum(Img<T> in){
+		
+		RandomAccess<T> inra = in.randomAccess();
+		
+		long[] indim = IntervalUtils.getDims(in);
+		long[] outdim = new long[ indim.length - 1 ];
+		for (int i=0; i<outdim.length; i++){
+			outdim[i] = indim[i];
+		}
+		int N = in.numDimensions();
+		
+		Img<T> out = in.factory().create(outdim, in.firstElement());
+		RandomAccess<T> outra = out.randomAccess();
+		
+		IntervalIterator c = new IntervalIterator( outdim );
+		while( c.hasNext() )
+		{
+			c.fwd();
+			outra.setPosition(c);
+			
+			for (int i=0; i<outdim.length; i++){
+				inra.setPosition( c.getIntPosition(i), i);
+			}
+			
+			for ( int n=0; n < in.dimension(N-1); n++ )
+			{
+				inra.setPosition(n, (N-1));
+				outra.get().add( inra.get() );
+			}
+		}
+		
+		return out;
+	}
+	
 	public static <B extends AbstractIntegerType<B>> Img<FloatType> signedDistance(Img<B> mask){
 		
 		DistanceMap<B> dm = new DistanceMap<B>();
@@ -551,6 +590,37 @@ public class ImgOps {
       
       return out;
    }
+   
+   public static <T extends NativeType<T> & RealType<T>> Img<T> createGaussianEllipseImg(int[] size, double[] ctr, double[] sigmas, double min, double max, T t){
+	   return createGaussianEllipseImg( new ArrayImgFactory<T>(),
+			   size, ctr, sigmas, min, max, t);
+   }
+   
+   public static <T extends NativeType<T> & RealType<T>> Img<T> createGaussianEllipseImg(ImgFactory<T> factory, int[] size, double[] ctr, double[] sigmas, double min, double max, T t){
+	      
+	      Img<T> out = factory.create(size, t);
+	      
+	      Cursor<T> c = out.localizingCursor();
+	      double[] pos = new double[3];
+	      
+	      while(c.hasNext())
+	      {
+	    	 c.fwd();
+	         c.localize(pos);
+	         
+	         double res = 0;
+	         for(int d=0; d<size.length; d++)
+	         {
+	        	 res +=  (pos[d] - ctr[d]) * (pos[d] - ctr[d]) / sigmas[d];
+	         }
+	         res = 1/(1 + res);
+	         
+	         if( res > min && res < max)  c.get().setReal(res);
+	         
+	      }
+	      return out;
+	   }
+   
    
    public static < T extends RealType< T >> Img<T> threshold(Img<T> img, double thresh, boolean greaterThan){
       
