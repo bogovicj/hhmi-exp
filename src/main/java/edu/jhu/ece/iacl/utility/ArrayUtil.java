@@ -1694,6 +1694,96 @@ public class ArrayUtil {
 	}
 	
 	/**
+	 * Returns a sub-array of the input array with range
+	 * specified by the starting (inclusive) and ending (exclusive) 
+	 * indices.
+	 * @param in
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public static final byte[] subArray(byte[] in, int start, int end){
+		int N = end - start;
+		byte[] out = new byte[N];
+		for(int i=0; i<N; i++){
+			out[i]=in[i+start];
+		}
+		return out;
+	}
+	
+	/**
+	 * Returns a sub-array of the input array with range
+	 *specified by the starting (inclusive) and ending (exclusive) 
+	 * indices.
+	 * @param in
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public static final int[] subArray(int[] in, int start, int end){
+		int N = end - start;
+		int[] out = new int[N];
+		for(int i=0; i<N; i++){
+			out[i]=in[i+start];
+		}
+		return out;
+	}
+	/**
+	 * Returns a sub-array of the input array with range
+	 * specified by the starting (inclusive) and ending (exclusive) 
+	 * indices.
+	 * @param in
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public static final long[] subArray(long[] in, int start, int end){
+		int N = end - start;
+		long[] out = new long[N];
+		for(int i=0; i<N; i++){
+			out[i]=in[i+start];
+		}
+		return out;
+	}
+	
+	/**
+	 * Returns a sub-array of the input array with range
+	 * specified by the starting (inclusive) and ending (exclusive) 
+	 * indices.
+	 * @param in
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public static final float[] subArray(float[] in, int start, int end){
+		int N = end - start;
+		float[] out = new float[N];
+		for(int i=0; i<N; i++){
+			out[i]=in[i+start];
+		}
+		return out;
+	}
+	
+	/**
+	 * Returns a sub-array of the input array with range
+	 * specified by the starting (inclusive) and ending (exclusive) 
+	 * indices.
+	 * @param in
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public static final double[] subArray(double[] in, int start, int end){
+		int N = end - start;
+		double[] out = new double[N];
+		for(int i=0; i<N; i++){
+			out[i]=in[i+start];
+		}
+		return out;
+	}
+	
+	
+	/**
 	 * 
 	 * @param in Input array
 	 * @param x
