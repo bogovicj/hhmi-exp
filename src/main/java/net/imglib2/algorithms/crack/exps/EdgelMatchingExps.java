@@ -2,6 +2,7 @@ package net.imglib2.algorithms.crack.exps;
 
 import java.util.ArrayList;
 
+import edu.jhu.ece.iacl.utility.ArrayUtil;
 import ij.IJ;
 import net.imglib2.RealPoint;
 import net.imglib2.algorithm.edge.Edgel;
@@ -25,7 +26,7 @@ public class EdgelMatchingExps {
 	{
 		String imgfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/crackVolDown_cp.tif";
 		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp_smooth.tif";
-		int[] patchSize = new int[] { 19, 19, 13 };
+		int[] patchSize = new int[] { 19, 19, 7 };
 		
 		Img<FloatType> img =  ImagePlusAdapter.convertFloat( IJ.openImage(imgfn) );
 		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );

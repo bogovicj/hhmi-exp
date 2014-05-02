@@ -17,6 +17,7 @@ import net.imglib2.algorithm.edge.*;
 import net.imglib2.algorithms.edge.EdgelTools;
 import net.imglib2.algorithms.moments.ImgMoment;
 import net.imglib2.algorithms.patch.PatchTools;
+import net.imglib2.algorithms.registration.TransformTools;
 import net.imglib2.img.*;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.iterator.IntervalIterator;
@@ -195,25 +196,25 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 //		ImgOps.writeFloat( fPatch, 
 //				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patchDepthSamp_test_match.tif"));
 		
-//		Img<T> ePatch2 = ImgOps.collapseSum(ePatch);
-//		Img<T> fPatch2 = ImgOps.collapseSum(fPatch);
+		Img<T> ePatch2 = ImgOps.collapseSum(ePatch);
+		Img<T> fPatch2 = ImgOps.collapseSum(fPatch);
 		
-		int[] midPt = PatchTools.patchSizeToMidpt(patchSize);
-		int zdim = midPt.length - 1; 
+		int[] midPt = ArrayUtil.subArray(
+				PatchTools.patchSizeToMidpt(patchSize),
+				0, ePatch2.numDimensions());
 		
-		IntervalView<T> ePatch2 = Views.hyperSlice( ePatch, zdim, midPt[zdim] );
-		IntervalView<T> fPatch2 = Views.hyperSlice( fPatch, zdim, midPt[zdim] );
+		logger.debug(" end: " + (ePatch2.numDimensions() - 1));
+		logger.debug(" midPt: " + ArrayUtil.printArray(midPt));
 		
-		ImgMoment eMom = new ImgMoment();
-		double[] eOr = eMom.orientation( Views.iterable( ePatch2 ));
-		eMom.orientationEvalsEvecs(eOr);
+//		int zdim = midPt.length - 1; 
+//		
+//		IntervalView<T> ePatch2 = Views.hyperSlice( ePatch, zdim, midPt[zdim] );
+//		IntervalView<T> fPatch2 = Views.hyperSlice( fPatch, zdim, midPt[zdim] );
 		
-		ImgMoment fMom = new ImgMoment();
-		double[] fOr = fMom.orientation(Views.iterable( fPatch2 ));
-		fMom.orientationEvalsEvecs(fOr);
 		
-		logger.debug("e vecs: " + ArrayUtil.printArray(eMom.getEvecs()));
-		logger.debug("f vecs: " + ArrayUtil.printArray(fMom.getEvecs()));
+		AffineTransform xfm = TransformTools.rotationPca(ePatch2, fPatch2, ArrayUtil.toDouble(midPt));
+		
+		logger.debug("xfm : \n" + TransformTools.printAffineTransform(xfm));
 		
 //		long[] min = new long[ePatch2.numDimensions()];
 //		ePatch2.min(min);
@@ -233,6 +234,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 //		ImgOps.copyInto(fPatch2, fPatch2out);
 //		ImgOps.writeFloat( fPatch2out, 
 //				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patchDepthSamp_test_mid_match.tif"));
+		
 		
 		
 		
