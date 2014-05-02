@@ -275,6 +275,12 @@ public class ImgMoment {
 		return m2;
 	}
 	
+	public double[] centroid(){
+		double[] cent = m1.clone();
+		ArrayUtil.divide(cent, m);
+		return cent;
+	}
+	
 	/** 
 	 * Computes a 12-vector
 	 * The first element is the largest eigenvalue
