@@ -27,7 +27,7 @@ import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.ImgUtil;
+import net.imglib2.util.ImgOps;
 import net.imglib2.util.LinAlgHelpers;
 import net.imglib2.view.Views;
 
@@ -59,7 +59,7 @@ public class EdgelOrientationVisValid {
 
 //		CrackCorrection<FloatType, UnsignedByteType> cc = new CrackCorrection<FloatType, UnsignedByteType>(
 //				img, mask);
-		CrackCorrection<FloatType, FloatType> cc = new CrackCorrection<FloatType, FloatType>(
+		CrackCorrection<FloatType> cc = new CrackCorrection<FloatType>(
 				img, mask, patchSize);
 		
 		cc.computeEdgels();
@@ -86,24 +86,24 @@ public class EdgelOrientationVisValid {
 			
 			
 			AffineTransform3D xfmIn = EdgelTools.edgelToXfm(edgel, patchMidPt);
+			double[] pos = new double[edgel.numDimensions() ];
+			edgel.localize(pos);
 			
-			CrackCorrection.setMask( ArrayUtil.toDouble(edgel.getPosition()), 
-					patchSize, xfmIn, 
+			CrackCorrection.setMask( pos, patchSize, xfmIn, 
 					Views.extendValue(edgelmaskimg, new UnsignedByteType()), val);
 
 			i++;
 		}
 		
-		ImgUtil.write(edgelmaskimg, edgelMaskPrefix + ".tif");
+		ImgOps.write(edgelmaskimg, edgelMaskPrefix + ".tif");
 		
-		float[] pos = new float[]{221,110,6};
+		double[] pos = new double[]{221,110,6};
 		int j = cc.edgelIdxNearest(pos);
 		
 		Edgel edgel = edgels.get(j);
 		
-		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
-		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
-		logger.info(" edgel mag : " + edgel.getMagnitude());
+		logger.info(" " + edgel);
+
 		
 //		int[] coord = new int[3];
 //		
@@ -143,20 +143,19 @@ public class EdgelOrientationVisValid {
 		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );
 
 
-		CrackCorrection<FloatType, FloatType> cc = new CrackCorrection<FloatType, FloatType>(
+		CrackCorrection<FloatType> cc = new CrackCorrection<FloatType>(
 				img, mask, patchSize);
 		
 		cc.computeEdgels();
 		ArrayList<Edgel> edgels = cc.getEdgels();
 		
-		float[] pos = new float[]{206,137,9};
+		double[] pos = new double[]{206,137,9};
 		int i = cc.edgelIdxNearest(pos);
 		
 		Edgel edgel = edgels.get(i);
 		
-		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
-		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
-		logger.info(" edgel mag : " + edgel.getMagnitude());
+		logger.info(" " + edgel);
+		
 		
 		
 	}
@@ -187,21 +186,17 @@ public class EdgelOrientationVisValid {
 		logger.info("num edgels " + edgels.size());
 		
 		
-		float[] pos = new float[]{206,137,9};
+		double[] pos = new double[]{206,137,9};
 
 		
-		ImgUtil.write(mask, crackMaskRewriteFn);
+		ImgOps.write(mask, crackMaskRewriteFn);
 		CrackCorrection cc = new CrackCorrection();
 		cc.setEdgels(edgels);
 		
 		int i = cc.edgelIdxNearest(pos);
 		
 		Edgel edgel = edgels.get(i);
-//		
-		logger.info(" edgel pos : " + ArrayUtil.printArray(edgel.getPosition()));
-		logger.info(" edgel grad: " + ArrayUtil.printArray(edgel.getGradient()));
-		logger.info(" edgel mag : " + edgel.getMagnitude());
-//		
+		logger.info(" " + edgel );	
 		
 	}
 	
@@ -221,7 +216,7 @@ public class EdgelOrientationVisValid {
 //		img.getImagePlus().show();
 		
 		int[] patchSize = new int[]{7,7,3};
-		CrackCorrection<FloatType, FloatType> cc = new CrackCorrection<FloatType, FloatType>(
+		CrackCorrection<FloatType> cc = new CrackCorrection<FloatType>(
 				img, img, patchSize);
 		
 		cc.computeEdgels();
@@ -251,17 +246,17 @@ public class EdgelOrientationVisValid {
 			
 			
 			AffineTransform3D xfmIn = EdgelTools.edgelToXfm(edgel, patchMidPt);
-			
-			CrackCorrection.setMask( ArrayUtil.toDouble(edgel.getPosition()), 
-					patchSize, xfmIn, 
+			double[] pos = new double[edgel.numDimensions() ];
+			edgel.localize(pos);
+			CrackCorrection.setMask( pos, patchSize, xfmIn, 
 					Views.extendValue(edgelmaskimg, new UnsignedByteType()), val);
 
 			i++;
 		}
 		
 		
-		ImgUtil.write(edgelmaskimg, edgelMaskPrefix + ".tif");
-		ImgUtil.write(img, edgelPrefix + ".tif");
+		ImgOps.write(edgelmaskimg, edgelMaskPrefix + ".tif");
+		ImgOps.write(img, edgelPrefix + ".tif");
  
 		
 //		ImgUtil.write(mask, crackMaskRewriteFn);
