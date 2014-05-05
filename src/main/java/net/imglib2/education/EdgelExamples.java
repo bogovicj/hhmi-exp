@@ -7,18 +7,18 @@ import net.imglib2.algorithm.edge.Edgel;
 import net.imglib2.algorithm.edge.SubpixelEdgelDetection;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.ImgUtil;
+import net.imglib2.util.ImgOps;
 
 public class EdgelExamples {
 
 	public static Img<FloatType> genImage()
 	{
 		 FloatType t = new FloatType();
-		 Img<FloatType> img = ImgUtil.createEdgeImg( new int[]{64,64,12}, new double[]{1,2,0.5}, t, 0.2);
+		 Img<FloatType> img = ImgOps.createEdgeImg( new int[]{64,64,12}, new double[]{1,2,0.5}, t, 0.2);
 		 
 		 //String fnOut = "/Users/bogovicj/Documents/projects/crackStitching/edgeTestImg.tif";
 		 String fnOut = "/groups/jain/home/bogovicj/projects/crackPatching/edgeTestImg_3.tif";
-		 ImgUtil.write(img, fnOut);
+		 ImgOps.write(img, fnOut);
 		 
 		 return img;
 	}
@@ -30,20 +30,16 @@ public class EdgelExamples {
 		int[] sz = new int[]{20,20,5};
 
 		FloatType t = new FloatType();
-		Img<FloatType> img = ImgUtil.createGradientImg(sz, w, t);
+		Img<FloatType> img = ImgOps.createGradientImg(sz, w, t);
 
-		Img<FloatType> imgt  = ImgUtil.threshold( img,  20, true  );
-		Img<FloatType> imgt2 = ImgUtil.threshold( imgt, 26, false );
+		Img<FloatType> imgt  = ImgOps.threshold( img,  20, true  );
+		Img<FloatType> imgt2 = ImgOps.threshold( imgt, 26, false );
 
 		ArrayList<Edgel> edgels = SubpixelEdgelDetection.getEdgels(imgt2, imgt2.factory(), 13f);
 		System.out.println("num edgels " + edgels.size());
 		
 		for (int i=0; i<edgels.size(); i++){
-
-			System.out.println(" edgel pos : " + ArrayUtil.printArray(edgels.get(i).getPosition()));
-			System.out.println(" edgel grad: " + ArrayUtil.printArray(edgels.get(i).getGradient()));
-			System.out.println(" edgel mag : " + edgels.get(i).getMagnitude() + "\n");
-
+			System.out.println(" " + edgels.get(i));			
 		}
 		
 		// ImageJFunctions.show(imgt2);

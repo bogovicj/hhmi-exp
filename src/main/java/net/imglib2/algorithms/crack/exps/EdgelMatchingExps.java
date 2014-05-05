@@ -41,6 +41,7 @@ public class EdgelMatchingExps {
 		System.out.println(" i: " + i + "  " + cc.getEdgels().get(i));
 		System.out.println(" j: " + j + "  " + cc.getEdgels().get(j));
 	
+		cc.debugOutDir = "/groups/jain/home/bogovicj/projects/crackPatching/edgelRegPatch";
 		cc.registerEdgelsOrient( cc.getEdgels().get(i), cc.getEdgels().get(j), i);
 		
 	}
@@ -80,7 +81,6 @@ public class EdgelMatchingExps {
 		em.testAffinitiesReg();
 		
 	}
-	
 	
 	
 	public static void stupdidRadiusSearchTest()

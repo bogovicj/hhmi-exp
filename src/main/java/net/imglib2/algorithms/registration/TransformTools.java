@@ -171,6 +171,18 @@ public class TransformTools {
 	}
 	
 	/**
+	 * Makes an affine transformation applicable to higher dimensions by
+	 * 
+	 * Usef
+	 * @param xfm
+	 * @return
+	 */
+	public AffineTransform addDims( AffineTransform xfm ){
+		//TODO implement me
+		return null;
+	}
+	
+	/**
 	 * Computes a rotation transformation from the source to target.
 	 * @param src
 	 * @param tgt

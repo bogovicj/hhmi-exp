@@ -7,13 +7,13 @@ import net.imglib2.algorithms.edge.EdgelTools;
 import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
+import net.imglib2.iterator.IntervalIterator;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.ImgUtil;
+import net.imglib2.util.ImgOps;
 import net.imglib2.util.Intervals;
-import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
 import org.apache.log4j.LogManager;
@@ -28,14 +28,40 @@ public class EdgelToolsTest {
 	
 	public static Logger logger = LogManager.getLogger(EdgelToolsTest.class.getName());
 	
-	
+	@Test
+	public void testIntervalViewChange(){
+		
+		Edgel e = new Edgel(
+				new double[]{7f, 9f, 11f},
+				new double[]{0f, 1f, 0f },
+				1f
+			);
+		
+		IntervalIterator srcI = new IntervalIterator(
+				new long[]{0,0,0},new long[]{20,20,20} );
+		
+		IntervalIterator tgtI = new IntervalIterator(
+				new long[]{1,1,1},new long[]{20,20,20} );
+				
+		Edgel eTgtView = EdgelTools.edgelFromInterval(e, srcI, tgtI);
+		
+		double[] pos = new double[3];
+		double[] vpos = new double[3];
+		eTgtView.localize( vpos );
+		e.localize( pos );
+		
+		for( int i=0; i<3; i++){
+			assertEquals( "pos", pos[i]-1, vpos[i], tol);
+			
+		}
+	}
 	
 	@Test
 	public void testXfm() throws InterruptedException{
 		
 		Edgel e = new Edgel(
-				new float[]{7f, 9f, 11f},
-				new float[]{0f, 1f, 0f },
+				new double[]{7f, 9f, 11f},
+				new double[]{0f, 1f, 0f },
 				1f
 			);
 			
@@ -91,14 +117,14 @@ public class EdgelToolsTest {
 //		Img<FloatType> img = ImgUtil.createCheckerImg( new int[]{15,15,15}, new FloatType(), nLevels);
 //		ImgUtil.writeFloat(img, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/checkerImg.tif");
 		
-		Img<FloatType> img = ImgUtil.createGradientImgY(15, 15, 15,  new FloatType());
+		Img<FloatType> img = ImgOps.createGradientImgY(15, 15, 15,  new FloatType());
 
 		RandomAccess<FloatType> imgRa = img.randomAccess();
 		
 		int[] patchSize = new int[]{5,5,3};
 		Edgel e = new Edgel(
-				new float[]{7f, 9f, 11f},
-				new float[]{0f, 1f, 0f },
+				new double[]{7f, 9f, 11f},
+				new double[]{0f, 1f, 0f },
 				1f
 			);
 		
@@ -123,7 +149,7 @@ public class EdgelToolsTest {
 	@Test
 	public void testLaplacianEdge1d()
 	{
-		Img<FloatType> img = ImgUtil.createEdgeImg( new int[]{21},
+		Img<FloatType> img = ImgOps.createEdgeImg( new int[]{21},
 				new double[]{1}, new FloatType(), 1);
 		
 		Img<FloatType> lapl = img.factory().create( new int[]{21}, new FloatType());
@@ -163,10 +189,10 @@ public class EdgelToolsTest {
 	public void testLaplacianEdge3d()
 	{
 		
-		Img<FloatType> img = ImgUtil.createEdgeImg( new int[]{15, 15, 15},
+		Img<FloatType> img = ImgOps.createEdgeImg( new int[]{15, 15, 15},
 				new double[]{1,1,0.1}, new FloatType(), 1);
 		
-		ImgUtil.writeFloat(img, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/edgeImg.tif");
+		ImgOps.writeFloat(img, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/edgeImg.tif");
 	
 		
 		ArrayImgFactory<FloatType> factory = new ArrayImgFactory<FloatType>();
@@ -175,7 +201,7 @@ public class EdgelToolsTest {
 		
 		EdgelTools.laplacian( Views.extendBorder( img ), lapl);
 		
-		ImgUtil.writeFloat(lapl, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/edgeImgLap.tif");
+		ImgOps.writeFloat(lapl, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/edgeImgLap.tif");
 		
 //		long[] min = new long[edge.numDimensions()];
 //		long[] max = new long[edge.numDimensions()];
@@ -194,7 +220,7 @@ public class EdgelToolsTest {
 				Views.extendMirrorDouble( lapl ), 
 				Views.interval( edge, Intervals.expand(edge, -1) ), 
 				0.000001);
-		ImgUtil.writeFloat(edge, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/edgeImgLapEdge.tif");
+		ImgOps.writeFloat(edge, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/edgeImgLapEdge.tif");
 		
 	}
 

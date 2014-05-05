@@ -802,7 +802,13 @@ public class ArrayUtil {
 		}
 		return b;
 	}
-	
+	public static final double[] toDouble(long[] a){
+		double[] b = new double[a.length];
+		for(int i=0; i<a.length; i++){
+			b[i]=a[i];
+		}
+		return b;
+	}
 	public static final String[] toString(double[] a){
 		String[] b = new String[a.length];
 		for(int i=0; i<a.length; i++){
@@ -1184,7 +1190,12 @@ public class ArrayUtil {
 			a[i][j][k][l]+=b[i][j][k][l]; 
 		}
 	}
-	
+	/**
+	 * Replace the contents of a with
+	 * a[i] - b[i] for all i.
+	 * @param a
+	 * @param b
+	 */
 	public static final void subtractInPlace(double[] a, double[] b){
 		for(int i=0; i<a.length; i++){
 			a[i]-=b[i];

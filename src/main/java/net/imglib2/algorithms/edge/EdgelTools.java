@@ -225,6 +225,35 @@ public class EdgelTools {
 
 		return xfm;	
 	}
+	
+	/**
+	 * 
+	 * @param e
+	 * @param itvl
+	 * @return
+	 */
+	public static Edgel edgelFromInterval( Edgel e, Interval srcInterval, Interval tgtInterval )
+	{
+		int ndims = e.numDimensions();
+		double[] pos = new double[ ndims ];
+		e.localize(pos);
+		// position has to be shifted 
+		
+		long[] srcmin = new long[ndims];
+		long[] tgtmin = new long[ndims];
+		
+		srcInterval.min(srcmin);
+		tgtInterval.min(tgtmin);
+		
+		// source to target 
+		long[] diff = ArrayUtil.subtract( tgtmin, srcmin);
+		ArrayUtil.subtractInPlace(pos, ArrayUtil.toDouble(diff));
+		
+		// gradient and magnitude can stay thet same
+		Edgel out = new Edgel( pos, e.getGradient().clone(), e.getMagnitude() );
+		
+		return out;
+	}
 
 	/**
 	 * Returns a transformed view of the input source image relative to an edgel.
