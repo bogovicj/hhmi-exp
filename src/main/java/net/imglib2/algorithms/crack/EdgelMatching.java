@@ -63,6 +63,11 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	Img<T> depth1;
 	Img<T> depth2;
 
+	// for debug
+	public String debugDir;
+	public String debugSuffix;
+	public int debug_i;
+
 	public EdgelMatching( Img<T> img, Img<T> mask, int[] patchSize)
 	{
 		this.img = img;
@@ -105,6 +110,17 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	{
 		this.edgels = edgels;
 		this.numEdgels = edgels.size();
+		
+		edgelTree = new KDTree<Edgel>( edgels, edgels );
+		switch ( search )
+		{
+		case COUNT:
+			countSearch = new  KNearestNeighborSearchOnKDTree<Edgel>( edgelTree, getEdgelSearchCount());
+			logger.info("" + getEdgelSearchCount() +"-Nearest neighbor search");
+		default:
+			radiusSearch = new  RadiusNeighborSearchOnKDTree<Edgel>( edgelTree );
+			logger.info("" + getEdgelSearchRadius()+  " radius search");
+		}
 		
 	}
 
@@ -310,10 +326,10 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 //			tabulateAffinities( e, candidateEdgels );
 			
 			int j = maxAffinityEdgelIdx( e, candidateEdgels );
+			
+			
 			debugVisEdgelView( i, e, candidateEdgels.get(j) );
-			
-			
-//			debugVisEdgelMatches( i, e, candidateEdgels );
+			debugVisEdgelMatches( i, e, candidateEdgels );
 			
 			i++;
 			
@@ -322,6 +338,27 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 			
 		}
 
+	}
+	
+	public void computeAffinities( Edgel e )
+	{
+		
+		logger.debug("edgel " + debug_i + " of " + numEdgels);
+		
+		ArrayList<Edgel> candidateEdgels = candidateEdgels(e);
+		logger.debug(" " + candidateEdgels.size() + " matches after search");
+		
+		filterEdgelsByNormal(e, candidateEdgels);
+		
+		logger.debug(" " + candidateEdgels.size() + " matches after filtering.");
+
+//		tabulateAffinities( e, candidateEdgels );
+		
+//		int j = maxAffinityEdgelIdx( e, candidateEdgels );
+		
+//		debugVisEdgelView(    debug_i, e, candidateEdgels.get(j) );
+		debugVisEdgelMatches( debug_i, e, candidateEdgels );
+		
 	}
 	
 	public int maxAffinityEdgelIdx( Edgel e, List<Edgel> matches)
@@ -376,16 +413,18 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		logger.debug( " done copying " );
 		
 		logger.debug( " writing patches " );
+		
 		ImgOps.writeFloat( ePatchImg, 
-				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patch_%03d.tif",i));
+				String.format("%s/patch_%03d_%s_.tif", debugDir, debugSuffix, i));
+		
 		ImgOps.writeFloat( fPatchImg, 
-				String.format("/groups/jain/home/bogovicj/projects/crackPatching/edgelMatchPatch/patch_%03d_match.tif",i));
+				String.format("%s/patch_%03d_match_%s_.tif",debugDir, debugSuffix, i));
+		
 		logger.debug( " done writing patches " );
 	}
 	
 	public void debugVisEdgelMatches(int i, Edgel e, List<Edgel> matches){
 		
-		String outFn = "/groups/jain/home/bogovicj/projects/crackPatching/edgelMatching";
 		
 		ArrayImgFactory<UnsignedByteType> ubfactory = new ArrayImgFactory<UnsignedByteType>();
 		Img<UnsignedByteType> edgelMatchImg = ubfactory.create(mask, new UnsignedByteType());
@@ -407,7 +446,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 //		logger.debug( "nnz: " + ImgOps.numNonZero(edgelMatchImg) );
 		
 		logger.debug( " writing match " );
-		ImgOps.writeByte(edgelMatchImg, outFn + "/edgelMatches_" + i + ".tif");
+		ImgOps.writeByte(edgelMatchImg, debugDir + "/edgelMatches_" + i + "_" + debugSuffix + ".tif");
 		logger.debug( " done writing " );
 	}
 	
