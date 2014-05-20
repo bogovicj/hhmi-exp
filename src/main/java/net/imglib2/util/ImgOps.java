@@ -546,9 +546,9 @@ public class ImgOps {
       return out;
    }
    
-   public static <T extends NativeType<T> & RealType<T>> Img<T> createGradientImgX(int width, int height, int depth, T t){
+   public static <T extends NativeType<T> & RealType<T>> Img<T> createGradientImgX( int[] sz, T t){
       ArrayImgFactory<T> factory = new ArrayImgFactory<T>();
-      Img<T> out = factory.create(new int[]{width,height,depth}, t);
+      Img<T> out = factory.create(sz, t);
       
       Cursor<T> c = out.localizingCursor();
       int[] pos = new int[3];
@@ -561,9 +561,9 @@ public class ImgOps {
       return out;
    }
 
-   public static <T extends NativeType<T> & RealType<T>> Img<T> createGradientImgY(int width, int height, int depth, T t){
+   public static <T extends NativeType<T> & RealType<T>> Img<T> createGradientImgY( int[] sz, T t){
       ArrayImgFactory<T> factory = new ArrayImgFactory<T>();
-      Img<T> out = factory.create(new int[]{width,height,depth}, t);
+      Img<T> out = factory.create(sz, t);
       
       Cursor<T> c = out.localizingCursor();
       int[] pos = new int[3];
@@ -576,9 +576,9 @@ public class ImgOps {
       return out;
    }
    
-   public static <T extends NativeType<T> & RealType<T>> Img<T> createGradientImgZ(int width, int height, int depth, T t){
+   public static <T extends NativeType<T> & RealType<T>> Img<T> createGradientImgZ( int[] sz, T t){
       ArrayImgFactory<T> factory = new ArrayImgFactory<T>();
-      Img<T> out = factory.create(new int[]{width,height,depth}, t);
+      Img<T> out = factory.create( sz, t);
       
       Cursor<T> c = out.localizingCursor();
       int[] pos = new int[3];
