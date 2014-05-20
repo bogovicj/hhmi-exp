@@ -6,9 +6,9 @@ import edu.jhu.ece.iacl.utility.ArrayUtil;
 import ij.IJ;
 import net.imglib2.RealPoint;
 import net.imglib2.algorithm.edge.Edgel;
-import net.imglib2.algorithm.edge.EdgelFloat;
+//import net.imglib2.algorithm.edge.EdgelFloat;
 import net.imglib2.algorithm.edge.SubpixelEdgelDetection;
-import net.imglib2.algorithm.edge.SubpixelEdgelDetectionFloat;
+//import net.imglib2.algorithm.edge.SubpixelEdgelDetectionFloat;
 import net.imglib2.algorithms.crack.CrackCorrection;
 import net.imglib2.algorithms.crack.EdgelMatching;
 import net.imglib2.collection.KDTree;
@@ -153,10 +153,10 @@ public class EdgelMatchingExps {
 		float thresh = 40.0f;
 		
 		ArrayList<Edgel> 		edgels  = SubpixelEdgelDetection.getEdgels(mask, ffactory, thresh);
-		ArrayList<EdgelFloat> 	edgelsf = SubpixelEdgelDetectionFloat.getEdgels(mask, ffactory, thresh);
+//		ArrayList<EdgelFloat> 	edgelsf = SubpixelEdgelDetectionFloat.getEdgels(mask, ffactory, thresh);
 		
 		System.out.println(" edgels size:       " + edgels.size());
-		System.out.println(" edgels float size: " + edgelsf.size());
+//		System.out.println(" edgels float size: " + edgelsf.size());
 		
 		for(int i=0; i<20; i++){
 			System.out.println("d " + edgels.get(i) );

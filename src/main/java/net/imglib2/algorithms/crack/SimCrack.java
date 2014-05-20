@@ -2,20 +2,29 @@ package net.imglib2.algorithms.crack;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.process.ImageProcessor;
 import mpicbg.ij.ThinPlateSplineMapping;
+import net.imglib2.Cursor;
+import net.imglib2.RealRandomAccess;
+import net.imglib2.RealRandomAccessible;
 import net.imglib2.exception.ImgLibException;
 import net.imglib2.img.Img;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgs;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.integer.ByteType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.ImgOps;
+import net.imglib2.view.Views;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 import jitk.spline.KernelTransform;
+import jitk.spline.KernelTransformFloatSeparable;
 import jitk.spline.ThinPlateR2LogRSplineKernelTransform;
 import jitk.spline.ThinPlateR2LogRSplineKernelTransformFloatSep;
 import edu.jhu.ece.iacl.utility.ArrayUtil;
@@ -129,7 +138,6 @@ public class SimCrack {
 	}
 	public void buildXfm2d()
 	{
-
 		int Nface = numFacePts2d( edgePtNumSamples );
 		int N = Nface + ( 4 * nCrackPts );
 
@@ -170,15 +178,14 @@ public class SimCrack {
 				// -2eps
 				tpsCtrlPtsSrc[d][k+3] = (float)(crackCtrlPts[d][i] - crackCtrlOffsets[d][i] - 2*eps);     
 				tpsCtrlPtsTgt[d][k+3] = (float)(crackCtrlPts[d][i] - crackCtrlOffsets[d][i] - 4*eps);      
-				
 			}
 			k+=4;
-			
 		}
 		
 		tps = new ThinPlateR2LogRSplineKernelTransformFloatSep(ndims);
-//		tps.setLandmarks( tpsCtrlPtsSrc, tpsCtrlPtsTgt );
-		tps.setLandmarks( tpsCtrlPtsTgt, tpsCtrlPtsSrc);
+		tps.setLandmarks( tpsCtrlPtsSrc, tpsCtrlPtsTgt );
+//		tps.setLandmarks( tpsCtrlPtsTgt, tpsCtrlPtsSrc);
+		logger.info(" nLandmarks: " + tps.getNumLandmarks());
 		tps.fit();
 		
 		for( int i = Nface; i < N; i++ )  
@@ -521,22 +528,22 @@ public class SimCrack {
 		crackCtrlOffsets = new double[2][crackLength];
 		nCrackPts = 0;
 
-		// first point should have zero offset 
+		// first point should have zero offset
 
-			for ( int i=0; i<crackLength; i+=step){
+		for ( int i=0; i<crackLength; i+=step){
 
-				// offsets for first and last crack points should be zero
-				// otherwise, set non-zero crack offsets
-				if(i>0 && i<(crackLength-1)){
-					crackCtrlOffsets[1][nCrackPts] = crackHalfWidth;  // only offset in y 
-				}
-
-				crackCtrlPts[0][nCrackPts] = startX + i;
-				crackCtrlPts[1][nCrackPts] = fixedY;
-				
-				nCrackPts++;
+			// offsets for first and last crack points should be zero
+			// otherwise, set non-zero crack offsets
+			if(i>0 && i<(crackLength-1)){
+				crackCtrlOffsets[1][nCrackPts] = crackHalfWidth;  // only offset in y 
 			}
-		
+
+			crackCtrlPts[0][nCrackPts] = startX + i;
+			crackCtrlPts[1][nCrackPts] = fixedY;
+
+			nCrackPts++;
+		}
+
 		System.out.println("crack pts: \n" + ArrayUtil.printArray(crackCtrlPts));
 		System.out.println("\ncrack offs: \n" + ArrayUtil.printArray(crackCtrlOffsets));
 	}
@@ -598,7 +605,7 @@ public class SimCrack {
 		System.out.println("sc: " + sc);
 		
 		FloatType b = new FloatType();
-		Img<FloatType> img = ImgOps.createGradientImgY(dims[0], dims[1], dims[2], b);
+		Img<FloatType> img = ImgOps.createGradientImgY( dims, b);
 		
 		ImagePlus ip = null;
 		try {
@@ -632,7 +639,7 @@ public class SimCrack {
 		
 		
 		
-		ThinPlateSplineMapping.mapInterval(sc.tps, ip, dest);
+		ThinPlateSplineMapping.mapInterval(sc.tps, ip.getProcessor(), dest.getProcessor());
 		
 		String basename = "/groups/jain/home/bogovicj/projects/crackPatching/toyData/";
 		
@@ -651,15 +658,21 @@ public class SimCrack {
 	
 	public static void test2d() {
 
-		String fn = "/groups/jain/home/bogovicj/learning/advanced-imglib2/images/bee-1.tif";
+		String basename = "/Users/bogovicj/Documents/projects/crackSim/grad1/";
 		
-		ImagePlus ip = IJ.openImage(fn);
-		ImagePlusImg< ByteType, ? > img = ImagePlusImgs.from(ip);
+//		String fn = "/groups/jain/home/bogovicj/learning/advanced-imglib2/images/bee-1.tif";
+		String fn = basename + "grad.tif";
 		
-		int[] dims = new int[]{	(int)img.dimension(0),
-							   	(int)img.dimension(1)};
+//		ImagePlus ip = IJ.openImage(fn);
+//		ImagePlusImg< ByteType, ? > img = ImagePlusImgs.from(ip);
+//		
+//		int[] dims = new int[]{	(int)img.dimension(0),
+//							   	(int)img.dimension(1)};
 		
-		System.out.println("img sz: " + ArrayUtil.printArray(dims));
+		int[] sz = new int[]{32,32};
+		double[] w = new double[]{ 0.50, 0.50 };
+		Img<FloatType> img = ImgOps.createGradientImg(sz, w, new FloatType());
+		Img<FloatType> dest = img.factory().create( img, img.firstElement());
 		
 //		int sPerDim = 9;
 //		int N = numFacePts2d(sPerDim);
@@ -672,29 +685,48 @@ public class SimCrack {
 //		System.out.println("face pts: \n" + ArrayUtil.printArray(dest));
 		
 		SimCrack sc = new SimCrack();
-		sc.setDims(dims);
+		sc.setDims(sz);
 		
 		int startX 		= 30;
-		int crackLength = dims[0] - 30;
+		int crackLength = sz[0] - 15;
 		int step        = 10;
-		int fixedY 		= dims[1]/2;
-		double crackHalfWidth = 10.0;
+		int fixedY 		= sz[1]/2;
+		double crackHalfWidth = 3.0;
 		
-		sc.genSimpleCrackX2d( dims[0], startX, crackLength, step, fixedY, crackHalfWidth );
+		sc.genSimpleCrackX2d( sz[0], startX, crackLength, step, fixedY, crackHalfWidth );
 		sc.buildXfm2d();
 		
 		
-		ImagePlus dest = new ImagePlus("dest", ip.getStack());
-		System.out.println("in size:  " + ip.getWidth() + " " +  ip.getHeight() + " " + ip.getStackSize());
-		System.out.println("dest size:  " + dest.getWidth() + " " +  dest.getHeight() + " " + dest.getStackSize());
+//		ImagePlus dest = new ImagePlus("dest", ip.getStack());
+//		System.out.println("in size:  " + ip.getWidth() + " " +  ip.getHeight() + " " + ip.getStackSize());
+//		System.out.println("dest size:  " + dest.getWidth() + " " +  dest.getHeight() + " " + dest.getStackSize());
+//		IJ.save(dest, basename + "beeImg_crackX.tif");
 		
-		ThinPlateSplineMapping.mapInterval(sc.tps, ip, dest);
+		mapInterval(sc.tps, img, dest);
 		
-		String basename = "/groups/jain/home/bogovicj/projects/crackPatching/toyData/";
+		ImgOps.writeFloat(img, fn);
+		ImgOps.writeFloat(dest, basename + "grad_crack.tif");
 		
-		IJ.save(dest, basename + "beeImg_crackX.tif");
+	}
+	
+	final static public <T extends NumericType<T>> void mapInterval(
+			final KernelTransformFloatSeparable xfm,
+			final Img<T> src, final Img<T> tgt )
+	{
+		NLinearInterpolatorFactory<T> interp = new NLinearInterpolatorFactory<T>();
+		RealRandomAccess<T> sara = Views.interpolate( Views.extendZero(src), interp ).realRandomAccess();
 		
-		
+		Cursor<T> tc = tgt.cursor();
+		float[] pos = new float[src.numDimensions()]; 
+		while( tc.hasNext() ){
+			tc.fwd();
+			tc.localize(pos);
+			float[] srcPt  = xfm.transformPoint( pos );
+			sara.setPosition( srcPt );
+			tc.get().set( sara.get() );
+			
+		}
+				
 	}
 	
 	/**

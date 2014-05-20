@@ -55,17 +55,14 @@ public class BoundaryCursor< B extends BooleanType<B>> extends AbstractCursorInt
 		nbrhoodAccess = shape.neighborhoodsRandomAccessible(mask).randomAccess();
 	}
 
-	@Override
 	public B get() {
 		return maskCursor.get();
 	}
 
-	@Override
 	public void fwd() {
 		maskCursor.jumpFwd(jumpsToNextPos);
 	}
 
-	@Override
 	public boolean hasNext() {
 		
 		int jumps_tmp = 0;
@@ -140,17 +137,14 @@ public class BoundaryCursor< B extends BooleanType<B>> extends AbstractCursorInt
 		return false;
 	}
 
-	@Override
 	public void reset() {
 		maskCursor.reset();
 	}
 
-	@Override
 	public int getIntPosition(int arg0) {
 		return maskCursor.getIntPosition(arg0);
 	}
 
-	@Override
 	public void localize(int[] arg0) {
 		maskCursor.localize(arg0);
 	}
