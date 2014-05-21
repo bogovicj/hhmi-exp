@@ -274,6 +274,8 @@ public class ImgOps {
 		}
 	}
 	
+
+	
 	public static <T extends RealType<T>> Img<T> collapseSum(Img<T> in){
 		
 		RandomAccess<T> inra = in.randomAccess();
@@ -347,6 +349,13 @@ public class ImgOps {
 		 }
 		
 		return sdf;
+	}
+	
+	public static <T extends Type<T>> void fill(IterableInterval<T> in, T t){
+		Cursor<T> c = in.cursor();
+		while(c.hasNext()){
+			c.next().set(t.copy());
+		}
 	}
 	
 	public static <T extends Type<T>> void fill(Img<T> img, T value){

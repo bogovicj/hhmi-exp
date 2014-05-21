@@ -14,6 +14,9 @@ import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.neighborsearch.KNearestNeighborSearchOnKDTree;
 import net.imglib2.neighborsearch.RadiusNeighborSearchOnKDTree;
+import net.imglib2.ops.function.real.RealImageFunction;
+import net.imglib2.ops.function.real.StatCalculator;
+import net.imglib2.ops.pointset.IterableIntervalPointSet;
 import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
 import net.imglib2.type.NativeType;
@@ -22,6 +25,7 @@ import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.ImgOps;
 import net.imglib2.util.LinAlgHelpers;
+import net.imglib2.view.Views;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -67,6 +71,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	public String debugDir;
 	public String debugSuffix;
 	public int debug_i;
+	
 
 	public EdgelMatching( Img<T> img, Img<T> mask, int[] patchSize)
 	{
@@ -74,6 +79,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		this.mask = mask;
 
 		this.patchSize = patchSize;
+		depth1 = img.factory().create( patchSize, img.firstElement());
 	}
 	
 	public void setSearchType( SearchTypes searchType ){
@@ -192,31 +198,52 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	 */
 	public double edgelAffinities( Edgel e1, Edgel e2 )
 	{
+//		CrackCorrection.computeCrackDepthNormalMask(e1, mask, patchSize, depth1);
+//		CrackCorrection.computeCrackDepthNormalMask(e2, mask, patchSize, depth2);
 		
-		RealTransformRandomAccessible<T, InverseRealTransform> e1View = 
-				EdgelTools.edgelToView(e1, img, patchSize);
+		double[] f1 = computeEdgelFeatures( e1 );
+		ArrayUtil.normalizeLengthInPlace(f1);
+
+		double[] f2 = computeEdgelFeatures( e2 );
+		ArrayUtil.normalizeLengthInPlace( f2 );
 		
-		RealTransformRandomAccessible<T, InverseRealTransform> e2View = 
-				EdgelTools.edgelToView(e2, img, patchSize);
+		ArrayUtil.subtractInPlace( f1,  f2 );
+		double res = ArrayUtil.sumSquares( f1 );
 		
-		CrackCorrection.computeCrackDepthNormalMask(e1, mask, patchSize, depth1);
-		CrackCorrection.computeCrackDepthNormalMask(e2, mask, patchSize, depth2);
+		return res;
+	}
+	
+	protected double[] computeEdgelFeatures( Edgel e )
+	{
 		
-		double depthSSD = 0;
+		RandomAccessible<T> e1View = 
+				EdgelTools.edgelToView(e, img, patchSize);
 		
-//		Cursor<FloatType> curs = depth1.cursor();
-//		while( curs.hasNext() )
-//		{
-//			curs.fwd();
-//			
-//			
-//		}
 		
-		return -1;
+		
+		CrackCorrection.computeCrackDepthNormalMask(e, mask, patchSize, depth1);
+		
+		// compute intensity statistics
+		IterableIntervalPointSet ptset = new IterableIntervalPointSet( img );
+		
+		StatCalculator<T> sc = new StatCalculator<T>( 
+				new RealImageFunction<T,T>(
+						Views.interval( e1View, new long[patchSize.length], ArrayUtil.toLong(patchSize)), img.firstElement()),
+				ptset );
+		
+		double[] feats = new double[4];
+
+		feats[0] = sc.arithmeticMean();
+		feats[1] = sc.sampleStdDev();
+		feats[2] = sc.sampleSkew();
+		feats[3] = sc.sampleKurtosis();
+		
+		
+		return feats;
 	}
 	
 	/**
-	 * Computes an affinity between two edgels using only geometrical information.
+	 * Computes an affinity between two edgels using only geometric information.
 	 * <P>
 	 * dist(e1,e1) + lam * dot
 	 * @param e1 first edgel
@@ -227,6 +254,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	
 	public double edgelAffinitiesGeom ( Edgel e1, Edgel e2, double lam )
 	{
+		// negate because normals should point in opposite directions
 		double dot = -LinAlgHelpers.dot( e1.getGradient(), e2.getGradient() );
 		
 		double[] p1 = new double[e1.numDimensions()];
@@ -352,7 +380,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		
 		logger.debug(" " + candidateEdgels.size() + " matches after filtering.");
 
-//		tabulateAffinities( e, candidateEdgels );
+		tabulateAffinities( e, candidateEdgels );
 		
 //		int j = maxAffinityEdgelIdx( e, candidateEdgels );
 		
@@ -380,8 +408,11 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	
 	public void tabulateAffinities( Edgel e, List<Edgel> matches)
 	{
+		edgelAffinities = new HashMap< EdgelPair, Double>();
+		int k = 0;
 		for( Edgel ec : matches )
 		{
+			logger.info(" affinity for edgel " + (++k) + " of " + matches.size());
 			EdgelPair pair = new EdgelPair(e, ec);
 			
 			// if we already have this affinity skip the computation
@@ -426,27 +457,31 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	public void debugVisEdgelMatches(int i, Edgel e, List<Edgel> matches){
 		
 		
-		ArrayImgFactory<UnsignedByteType> ubfactory = new ArrayImgFactory<UnsignedByteType>();
-		Img<UnsignedByteType> edgelMatchImg = ubfactory.create(mask, new UnsignedByteType());
-		RandomAccess<UnsignedByteType> emiRa = edgelMatchImg.randomAccess();
+		ArrayImgFactory<FloatType> ubfactory = new ArrayImgFactory<FloatType>();
+		Img<FloatType> edgelMatchImg = ubfactory.create(mask, new FloatType());
+		RandomAccess<FloatType> emiRa = edgelMatchImg.randomAccess();
 		
 		double[] pos = new double[e.numDimensions()];
 		e.localize(pos);
 		
 		emiRa.setPosition( ArrayUtil.toIntRound(pos));
-		emiRa.get().set( 255 );
+		emiRa.get().set( 2.0f );
+		
+		EdgelPair pair = new EdgelPair( null, null );
 		
 		for ( Edgel match : matches )
 		{
 			match.localize(pos);
 			emiRa.setPosition( ArrayUtil.toIntRound(pos));
-			emiRa.get().set( 128 );
+			
+			pair.set(e, match);
+			emiRa.get().setReal(  edgelAffinities.get(pair).doubleValue() );
 		}
 		
 //		logger.debug( "nnz: " + ImgOps.numNonZero(edgelMatchImg) );
 		
 		logger.debug( " writing match " );
-		ImgOps.writeByte(edgelMatchImg, debugDir + "/edgelMatches_" + i + "_" + debugSuffix + ".tif");
+		ImgOps.writeFloat(edgelMatchImg, debugDir + "/edgelMatchesAffinity_" + i + "_" + debugSuffix + ".tif");
 		logger.debug( " done writing " );
 	}
 	
@@ -503,16 +538,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		Edgel j;
 		public EdgelPair(Edgel i, Edgel j)
 		{
-			if( compare(i,j) < 0 )
-			{
-				this.i = i;
-				this.j = j;
-			}
-			else
-			{
-				this.i = j;
-				this.j = i;
-			}
+			set(i, j);
 		}
 		/**
 		 * provide a 
@@ -537,6 +563,19 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 				
 			}
 			return 0;
+		}
+		public void set( Edgel i, Edgel j)
+		{
+			if( compare(i,j) < 0 )
+			{
+				this.i = i;
+				this.j = j;
+			}
+			else
+			{
+				this.i = j;
+				this.j = i;
+			}
 		}
 
 	}

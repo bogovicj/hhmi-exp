@@ -52,14 +52,15 @@ public class EdgelMatchingExps {
 //		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp_smooth.tif";
 		
 		int downSampleFactor = 4;
-		double searchRadius = 100;
+//		double searchRadius = 100;
+		double searchRadius = 50;
 		
 //		String imgfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/groundTruth/closeup/img.tif";
 //		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/groundTruth/closeup/labels_interp_smooth.tif";
 		
 		String imgfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/groundTruth/closeup/img_ds"+downSampleFactor+".tif";
 		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/groundTruth/closeup/labels_interp_smooth_ds"+downSampleFactor+".tif";
-		int[] patchSize = new int[] { 31, 31, 19 };
+		int[] patchSize = new int[] { 31, 31, 21 };
 		
 		double[] testPt = new double[]{ 159,253,73 }; 
 		double[] resPt  = new double[]{ 170, 312, 136 };

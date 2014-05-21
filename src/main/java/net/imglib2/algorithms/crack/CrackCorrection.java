@@ -531,7 +531,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 			}
 			
 			// find the edge
-			EdgelTools.laplacian(cedgeView, lap1d);
+			EdgelTools.laplacian( cedgeView, lap1d);
 			
 			double edgeX = EdgelTools.zeroXing1d( lap1d );
 			
@@ -754,7 +754,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 //		return depthPatch;
 	}
 
-	public static <T extends RealType<T>> void computeCrackDepthNormalMask(
+	public static <T extends RealType<T> & NativeType<T>> void computeCrackDepthNormalMask(
 			Edgel edgel, 
 			RandomAccessibleInterval<T> mask, 
 			int[] patchSize, Img<T> depthPatch )
@@ -772,11 +772,12 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 			}
 		}
 		
+		logger.debug(" patchSizeAug "  + ArrayUtil.printArray(patchSizeAug ));
+		
 		int[] patchMidPt = PatchTools.patchSizeToMidpt(patchSizeAug);
 		
 		RealTransformRandomAccessible<T, InverseRealTransform> mskEdgelView = 
 				EdgelTools.edgelToView( edgel, mask, patchSizeAug );
-		
 		
 		// a 1-d image as long as the last dimension of the patch
 		Img<T> lap1d = depthPatch.factory().create(
@@ -785,6 +786,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 	
 		Cursor<T> itvl = depthPatch.cursor();
 		int[] pos = new int[depthPatch.numDimensions()];
+		T zero = lap1d.firstElement().copy();
 		
 		while( itvl.hasNext() )
 		{
@@ -793,15 +795,16 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 			
 			// collapse to 1d at the current position
 			MixedTransformView<T> cedgeView = Views.hyperSlice(mskEdgelView, 0, pos[0]);
-			for( int d=1; d<pos.length; d++)
-			{
+			int d = 1;
+			while( cedgeView.numDimensions() > 1 ){
 				// formerly d^th dimension is now the 0th dimension
 				cedgeView = Views.hyperSlice(cedgeView, 0, pos[d]);
+				d++;
 			}
 			
 			// find the edge
+			ImgOps.fill(lap1d, zero);
 			EdgelTools.laplacian(cedgeView, lap1d);
-			
 			double edgeX = EdgelTools.zeroXing1d( lap1d );
 			
 			// a depth of zero corresponds to a zero crossing at the midpoint 
@@ -1008,7 +1011,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 
 		//Img<FloatType> testImg = ImgUtil.createGradientImgX( 20, 20, 20, new FloatType() );
 		//Img<FloatType> testImg = ImgUtil.createGradientImgY( 20, 20, 20, new FloatType() );
-		Img<FloatType> testImg = ImgOps.createGradientImgZ(20, 20, 20,
+		Img<FloatType> testImg = ImgOps.createGradientImgZ( new int[]{20,20,20},
 				new FloatType());
 
 		System.out.println(" testImg: " + testImg);
@@ -1407,7 +1410,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 		System.out.println(" rem: " + rem );
 		
 		int[] patchSize = new int[]{11,11,9};
-		Img<FloatType> img  = ImgOps.createGradientImgZ(27, 27, 27, new FloatType());
+		Img<FloatType> img  = ImgOps.createGradientImgZ( new int[]{27, 27, 27}, new FloatType());
 		Img<FloatType> mask  = ImgOps.createEdgeImg( 
 				new int[]{27,27,27}, 
 				new double[]{0,0,1}, 

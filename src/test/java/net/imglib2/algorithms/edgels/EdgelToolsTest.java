@@ -2,7 +2,10 @@ package net.imglib2.algorithms.edgels;
 
 import static org.junit.Assert.*;
 import net.imglib2.RandomAccess;
+import net.imglib2.RandomAccessible;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.algorithm.edge.Edgel;
+import net.imglib2.algorithm.gradient.PartialDerivative;
 import net.imglib2.algorithms.edge.EdgelTools;
 import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.img.Img;
@@ -11,6 +14,7 @@ import net.imglib2.iterator.IntervalIterator;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.InverseRealTransform;
 import net.imglib2.realtransform.RealTransformRandomAccessible;
+import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.ImgOps;
 import net.imglib2.util.Intervals;
@@ -117,7 +121,7 @@ public class EdgelToolsTest {
 //		Img<FloatType> img = ImgUtil.createCheckerImg( new int[]{15,15,15}, new FloatType(), nLevels);
 //		ImgUtil.writeFloat(img, "/groups/jain/home/bogovicj/projects/crackPatching/toyData/checkerImg.tif");
 		
-		Img<FloatType> img = ImgOps.createGradientImgY(15, 15, 15,  new FloatType());
+		Img<FloatType> img = ImgOps.createGradientImgY( new int[]{15, 15, 15},  new FloatType());
 
 		RandomAccess<FloatType> imgRa = img.randomAccess();
 		
@@ -146,6 +150,41 @@ public class EdgelToolsTest {
 		
 	}
 
+	@Test
+	public void testLaplacianEdge1dClose()
+	{
+		Img<FloatType> img = ImgOps.createEdgeImg( new int[]{21},
+				new double[]{1}, new FloatType(), 1);
+		Img<FloatType> lapl = img.factory().create( new int[]{21}, new FloatType());
+		Img<FloatType> edge = img.factory().create( new int[]{21}, new FloatType());
+		
+		img = img.factory().create( new int[]{21}, new FloatType());
+		
+		img.randomAccess().setPosition(0, 0);
+		img.randomAccess().get().setOne();
+		System.out.println("\nimg:");
+		print(img, 0);
+		
+		EdgelTools.laplacian( Views.extendBorder( img ), lapl);
+		System.out.println("\nlapl:");
+		print(lapl, 0);
+		
+		double edgeX = EdgelTools.zeroXing1d(lapl);
+		
+		System.out.println("\nedgeX: " + edgeX);
+		
+		assertEquals( edgeX, 0.5, tol);
+	}
+	
+	public static <T> void print(Img<T> ra, int dim){
+		RandomAccess<T> cevRa = ra.randomAccess();
+		
+		for( int i=0; i < ra.dimension(dim); i++){
+			cevRa.setPosition( i , dim );
+			System.out.println(" " + cevRa.get());	
+		}
+	}
+	
 	@Test
 	public void testLaplacianEdge1d()
 	{

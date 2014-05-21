@@ -10,6 +10,7 @@ import edu.jhu.ece.iacl.utility.ArrayUtil;
 import net.imglib2.algorithm.edge.Edgel;
 import net.imglib2.algorithm.gradient.PartialDerivative;
 import net.imglib2.algorithm.region.localneighborhood.Neighborhood;
+import net.imglib2.algorithms.edgels.EdgelToolsTest;
 import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.algorithms.region.localneighborhood.CrossShape;
 import net.imglib2.algorithms.region.localneighborhood.CrossShape.NeighborhoodsAccessible;
@@ -38,15 +39,16 @@ public class EdgelTools {
 		}
 		gradDims[dest.numDimensions()] = dest.numDimensions();
 		
-		logger.debug("ndims: " + src.numDimensions());
-		logger.debug("ndims: " + dest.numDimensions());
+		//logger.debug("ndims: " + src.numDimensions());
+		//logger.debug("ndims: " + dest.numDimensions());
 		
 		// first partial derivatives
 		Img<T> grad1 = dest.factory().create(gradDims, dest.firstElement());
 		for ( int d=0; d<dest.numDimensions(); d++)
 		{
 			PartialDerivative.gradientCentralDifference(
-					src, Views.hyperSlice( grad1, dest.numDimensions(), d), d);
+					src,
+					Views.hyperSlice( grad1, dest.numDimensions(), d), d);
 		}
 		
 		// second partial derivatives
@@ -54,7 +56,7 @@ public class EdgelTools {
 		for ( int d=0; d<dest.numDimensions(); d++)
 		{
 			PartialDerivative.gradientCentralDifference(
-					Views.extendMirrorDouble( Views.hyperSlice( grad1, dest.numDimensions(), d )), 
+					Views.extendZero( Views.hyperSlice( grad1, dest.numDimensions(), d )), 
 					Views.hyperSlice( grad2, dest.numDimensions(), d), d);
 		}
 		
@@ -268,7 +270,7 @@ public class EdgelTools {
 	 */
 	public static <T extends RealType<T>> RealTransformRandomAccessible<T, InverseRealTransform> edgelToView(Edgel edgel, RandomAccessibleInterval<T> src, int[] patchSize) 
 	{
-		logger.info(" edgel pos : " + edgel);
+		logger.debug(" edgel pos : " + edgel);
 
 		int[] midPt = PatchTools.patchSizeToMidpt( patchSize ); 	
 		AffineTransform3D xfm = edgelToXfm(edgel, midPt);
