@@ -1,6 +1,8 @@
 package net.imglib2.algorithms.crack.exps;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import edu.jhu.ece.iacl.utility.ArrayUtil;
 import ij.IJ;
@@ -11,6 +13,7 @@ import net.imglib2.algorithm.edge.SubpixelEdgelDetection;
 //import net.imglib2.algorithm.edge.SubpixelEdgelDetectionFloat;
 import net.imglib2.algorithms.crack.CrackCorrection;
 import net.imglib2.algorithms.crack.EdgelMatching;
+import net.imglib2.algorithms.crack.EdgelMatching.EdgelPair;
 import net.imglib2.collection.KDTree;
 import net.imglib2.img.ImagePlusAdapter;
 import net.imglib2.img.Img;
@@ -22,6 +25,65 @@ import net.imglib2.util.ImgOps;
 
 public class EdgelMatchingExps {
 
+	public static void edgelFeatures()
+	{
+		int downSampleFactor = 4;
+		double searchRadius = 100;
+//		double searchRadius = 50;
+		
+		String imgfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/groundTruth/closeup/img_ds"+downSampleFactor+".tif";
+		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/groundTruth/closeup/labels_interp_smooth_ds"+downSampleFactor+".tif";
+		
+//		String featurefn = "/groups/jain/home/bogovicj/projects/crackPatching/closeup/ds_4_patch_31-31-19/edgelFeatures.csv";
+//		int[] patchSize = new int[] { 31, 31, 19 };
+		
+		String featurefn = "/groups/jain/home/bogovicj/projects/crackPatching/closeup/ds_4_patch_15-15-9/edgelFeatures.csv";
+		int[] patchSize = new int[] { 15, 15, 9 };
+		
+		double[] testPt = new double[]{ 159,253,73 }; 
+		double[] resPt  = new double[]{ 170, 312, 136 };
+		
+		
+		ArrayUtil.divide(testPt, downSampleFactor);
+		ArrayUtil.divide(resPt, downSampleFactor);
+		
+		double[] diff   = ArrayUtil.clone(resPt);
+		ArrayUtil.subtractInPlace(diff, testPt);
+		double dist = Math.sqrt(ArrayUtil.sumSquares(diff));
+		System.out.println( " dist " + dist);
+		
+		ArrayUtil.divide( testPt, (double)downSampleFactor);
+		System.out.println( "testPt: " +  ArrayUtil.printArray(testPt));
+		
+		Img<FloatType> img =  ImagePlusAdapter.convertFloat( IJ.openImage(imgfn) );
+		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );
+
+		CrackCorrection<FloatType> cc = new CrackCorrection<FloatType>(
+				img, mask, patchSize);
+		
+		cc.computeEdgels();
+		
+		
+		EdgelMatching<FloatType> em = new EdgelMatching<FloatType>(img, mask, patchSize);
+		em.debugDir = "/groups/jain/home/bogovicj/projects/crackPatching/cropEdgelMatch";
+		em.debugSuffix = "ds"+downSampleFactor;
+//		em.debugSuffix = "";
+		
+//		em.setSearchType( EdgelMatching.SearchTypes.COUNT );
+//		em.setEdgelSearchCount(3000);
+		
+		em.setEdgelSearchRadius( searchRadius / (downSampleFactor) );
+		
+		em.setEdgels(cc.getEdgels());
+		
+		try {
+			em.computeAndWriteEdgelsAndFeatures(featurefn);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
 	public static void tryMatchRegistration() 
 	{
 		String imgfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/crackVolDown_cp.tif";
@@ -52,8 +114,8 @@ public class EdgelMatchingExps {
 //		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/Labels_ds_interp_cp_smooth.tif";
 		
 		int downSampleFactor = 4;
-//		double searchRadius = 100;
-		double searchRadius = 50;
+		double searchRadius = 100;
+//		double searchRadius = 50;
 		
 //		String imgfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/groundTruth/closeup/img.tif";
 //		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/groundTruth/closeup/labels_interp_smooth.tif";
@@ -167,9 +229,12 @@ public class EdgelMatchingExps {
 		
 	}
 	
+	
 	public static void main(String[] args) {
 
-		tryMatching();
+		edgelFeatures();
+		
+//		tryMatching();
 		
 //		tryMatchRegistration();
 		
@@ -177,7 +242,7 @@ public class EdgelMatchingExps {
 //		
 //		edgelTypeValidate();
 		
-		System.out.println("crack correction finished");
+		System.out.println("execution finished");
 		System.exit(0);
 		
 	}

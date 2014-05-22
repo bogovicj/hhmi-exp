@@ -1,8 +1,20 @@
 package net.imglib2.algorithms.crack;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessible;
@@ -30,6 +42,8 @@ import net.imglib2.view.Views;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
+import au.com.bytecode.opencsv.CSVReader;
+import au.com.bytecode.opencsv.CSVWriter;
 import edu.jhu.ece.iacl.utility.ArrayUtil;
 
 /**
@@ -72,7 +86,10 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	public String debugSuffix;
 	public int debug_i;
 	
-
+	public EdgelMatching( ){
+		edgelAffinities = new HashMap<EdgelPair,Double>();
+	}
+	
 	public EdgelMatching( Img<T> img, Img<T> mask, int[] patchSize)
 	{
 		this.img = img;
@@ -80,6 +97,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 
 		this.patchSize = patchSize;
 		depth1 = img.factory().create( patchSize, img.firstElement());
+		edgelAffinities = new HashMap<EdgelPair,Double>();
 	}
 	
 	public void setSearchType( SearchTypes searchType ){
@@ -100,6 +118,10 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 
 	public void setEdgelSearchCount(int edgelSearchCount) {
 		this.edgelSearchCount = edgelSearchCount;
+	}
+	
+	public HashMap<EdgelPair, Double> getAffinities(){
+		return edgelAffinities;
 	}
 
 	/**
@@ -219,9 +241,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		RandomAccessible<T> e1View = 
 				EdgelTools.edgelToView(e, img, patchSize);
 		
-		
-		
-		CrackCorrection.computeCrackDepthNormalMask(e, mask, patchSize, depth1);
+//		CrackCorrection.computeCrackDepthNormalMask(e, mask, patchSize, depth1);
 		
 		// compute intensity statistics
 		IterableIntervalPointSet ptset = new IterableIntervalPointSet( img );
@@ -290,8 +310,8 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 			logger.info("" + getEdgelSearchRadius()+  " radius search");
 		}
 		
-		edgelAffinities = new HashMap<EdgelPair,Double>();
-
+		
+		edgelAffinities.clear();
 //		int i = 12725;
 		
 		
@@ -382,12 +402,105 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 
 		tabulateAffinities( e, candidateEdgels );
 		
+		
+//		saveAffinities(debugDir + File.separator + "affinities.bin");
+	
 //		int j = maxAffinityEdgelIdx( e, candidateEdgels );
 		
 //		debugVisEdgelView(    debug_i, e, candidateEdgels.get(j) );
-		debugVisEdgelMatches( debug_i, e, candidateEdgels );
+//		debugVisEdgelMatches( debug_i, e, candidateEdgels );
 		
 	}
+	
+	public void saveAffinities( ) throws IOException
+	{
+		if( debugDir != null ){
+			saveAffinities( debugDir + File.separator + "affinities.csv");
+		}else{
+			saveAffinities( "affinities.csv");
+		}
+	}
+	
+	public void saveAffinities( String fn ) throws IOException
+	{
+		logger.info(" saving affinities to " + fn);
+		
+        CSVWriter csvWriter = new CSVWriter(new FileWriter(fn),',');
+        
+        Set<Entry<EdgelPair, Double>> entries = edgelAffinities.entrySet();
+        
+        
+        String[] vals = null;
+        for( Entry<EdgelPair, Double> entry: entries){
+        	EdgelPair pair = entry.getKey();
+        	Double    aff  =  entry.getValue();
+        	
+        	if( vals == null){
+        		vals = new String[ 3 + 4*( pair.i.numDimensions() ) ];
+        	}
+        	logger.info(" hi " );
+        	int k = 0;
+        	for(int i=0; i<pair.i.numDimensions(); i++){
+        		vals[k++] = Double.toString( pair.i.getDoublePosition(i) );
+        	}
+        	for(int i=0; i<pair.i.numDimensions(); i++){
+        		vals[k++] = Double.toString( pair.i.getGradient()[i] );
+        	}
+        	vals[k++] = Double.toString( pair.i.getMagnitude() );
+        	
+        	for(int i=0; i<pair.i.numDimensions(); i++){
+        		vals[k++] = Double.toString( pair.j.getDoublePosition(i) );
+        	}
+        	for(int i=0; i<pair.i.numDimensions(); i++){
+        		vals[k++] = Double.toString( pair.j.getGradient()[i] );
+        	}
+        	vals[k++] = Double.toString( pair.j.getMagnitude() );
+        	
+        	vals[k++] = Double.toString( aff );
+        	
+        	csvWriter.writeNext(vals);
+        
+        }
+
+        csvWriter.close();
+	}
+	
+	public void loadAffinities(  ) throws IOException
+	{
+		if( debugDir != null ){
+			loadAffinities( debugDir + File.separator + "affinities.csv");
+		}else{
+			loadAffinities( "affinities.csv");
+		}
+	}
+	
+	public void loadAffinities( String fn ) throws IOException
+	{
+		logger.info(" loading affinities from " + fn);
+		
+		 CSVReader csvReader = new CSVReader(new FileReader(fn),',');
+		 List<String[]> rows = csvReader.readAll();
+		 
+		 if( edgelAffinities == null ){
+			 edgelAffinities = new HashMap<EdgelPair, Double>();
+		 }
+		 
+		 for ( String[] row : rows ){
+			 int k = 0;
+			 
+			 Edgel e = new Edgel(
+					 new double[]{	Double.parseDouble(row[k++]),
+							 		Double.parseDouble(row[k++]),
+							 		Double.parseDouble(row[k++])},
+					new double[]{	Double.parseDouble(row[k++]),
+						 			Double.parseDouble(row[k++]),
+						 			Double.parseDouble(row[k++])},
+					Double.parseDouble(row[k++])
+				);
+		 }
+		 
+	}
+	
 	
 	public int maxAffinityEdgelIdx( Edgel e, List<Edgel> matches)
 	{
@@ -406,6 +519,11 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		return idxOut;
 	}
 	
+	public void setAffinity( Edgel e1, Edgel e2, double val){
+		EdgelPair pair = new EdgelPair(e1, e2);
+		edgelAffinities.put(pair, val);
+		
+	}
 	public void tabulateAffinities( Edgel e, List<Edgel> matches)
 	{
 		edgelAffinities = new HashMap< EdgelPair, Double>();
@@ -485,6 +603,48 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		logger.debug( " done writing " );
 	}
 	
+	public void computeAndWriteEdgelsAndFeatures(String fn) throws IOException{
+		logger.info(" saving edgels and features to " + fn);
+		
+        CSVWriter csvWriter = new CSVWriter(new FileWriter(fn),',');
+        String[] row = null;
+        int j = 0;
+        for ( Edgel e : edgels )
+        {
+        	int k = 0;
+        	
+        	double[] feats = computeEdgelFeatures(e);
+        	if( row == null){
+        		row = new String[ 1 + 2*( e.numDimensions()) + feats.length ];
+        	}
+        	
+        	for(int i=0; i<e.numDimensions(); i++){
+        		row[k++] = Double.toString( e.getDoublePosition(i) );
+        	}
+        	for(int i=0; i<e.numDimensions(); i++){
+        		row[k++] = Double.toString( e.getGradient()[i] );
+        	}
+        	row[k++] = Double.toString( e.getMagnitude() );
+        	
+        	for(int i=0; i<feats.length; i++)
+        	{
+        		row[k++] = Double.toString( feats[i] );
+        	}
+        	
+        	csvWriter.writeNext(row);
+        	
+        	if( j % 10 == 0 ){
+        		logger.info(" edgel " + j + " of " + edgels.size());
+        	}
+//        	if( j > 20 ){
+//        		csvWriter.close();
+//        		break;
+//        	}
+        	j++;
+        }
+        csvWriter.close();
+	}
+	
 //	/**
 //	 *
 //	 */
@@ -532,7 +692,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	/**
 	 * A pair of edgels
 	 */ 
-	public class EdgelPair
+	public static class EdgelPair
 	{
 		Edgel i;
 		Edgel j;
