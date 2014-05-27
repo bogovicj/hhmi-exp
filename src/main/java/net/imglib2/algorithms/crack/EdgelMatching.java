@@ -99,6 +99,10 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		depth1 = img.factory().create( patchSize, img.firstElement());
 		edgelAffinities = new HashMap<EdgelPair,Double>();
 	}
+
+	public SearchTypes getSearchType( ){
+		return search;
+	}
 	
 	public void setSearchType( SearchTypes searchType ){
 		this.search = searchType;
@@ -601,6 +605,38 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		logger.debug( " writing match " );
 		ImgOps.writeFloat(edgelMatchImg, debugDir + "/edgelMatchesAffinity_" + i + "_" + debugSuffix + ".tif");
 		logger.debug( " done writing " );
+	}
+	
+	public void computeAndWriteEdgelMatches(String fn, Edgel testEdgel) throws IOException{
+		logger.info(" saving edgels to " + fn);
+		CSVWriter csvWriter = new CSVWriter(new FileWriter(fn),',');
+		 
+		ArrayList<Edgel> matches = candidateEdgels( testEdgel );
+		filterEdgelsByNormal(testEdgel, matches);
+		String[] row = null;
+		
+		matches.add( testEdgel );
+		
+		int k = 0;
+		for ( Edgel e : matches ){
+			
+			k = 0;
+        	if( row == null){
+        		row = new String[ 1 + 2*( e.numDimensions()) ];
+        	}
+        	
+        	for(int i=0; i<e.numDimensions(); i++){
+        		row[k++] = Double.toString( e.getDoublePosition(i) );
+        	}
+        	for(int i=0; i<e.numDimensions(); i++){
+        		row[k++] = Double.toString( e.getGradient()[i] );
+        	}
+        	row[k++] = Double.toString( e.getMagnitude() );
+			
+        	csvWriter.writeNext(row);
+		}
+		
+		csvWriter.close();
 	}
 	
 	public void computeAndWriteEdgelsAndFeatures(String fn) throws IOException{

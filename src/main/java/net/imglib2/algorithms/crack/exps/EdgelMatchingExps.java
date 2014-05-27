@@ -1,5 +1,6 @@
 package net.imglib2.algorithms.crack.exps;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,12 +20,92 @@ import net.imglib2.img.ImagePlusAdapter;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.neighborsearch.RadiusNeighborSearchOnKDTree;
+import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.ImgOps;
 
 public class EdgelMatchingExps {
 
+	Img<FloatType> img;
+	Img<FloatType> mask;
+
+	CrackCorrection<FloatType> 	cc;
+	EdgelMatching<FloatType> 	em;
+	
+	
+	public static <T extends RealType<T> & NativeType<T>>void edgelPatchWrite(CrackCorrection<T> cc, int dsFactor){
+		
+		String dirBase = "/groups/jain/home/bogovicj/projects/crackPatching/closeup/matchExpsDepth_"+
+				String.format("ds_%d_%d-%d-%d", dsFactor, cc.getPatchSize()[0],cc.getPatchSize()[1],cc.getPatchSize()[2] );
+		
+		File dirbasef = new File(dirBase);
+		if( ! dirbasef.exists() ){ dirbasef.mkdir(); } 
+		
+		System.out.println(dirBase);
+		
+		double[] testPt = new double[]{ 159,253,73 }; 
+		double[] resPt  = new double[]{ 170, 312, 136 };
+		
+		ArrayUtil.divide(testPt, dsFactor);
+		ArrayUtil.divide(resPt, dsFactor);
+		
+		double[] diff   = ArrayUtil.clone(resPt);
+		ArrayUtil.subtractInPlace(diff, testPt);
+		double dist = Math.sqrt(ArrayUtil.sumSquares(diff));
+		System.out.println( " dist " + dist);
+		
+		
+		int ei = cc.edgelIdxNearest(testPt);
+		Edgel e = cc.getEdgels().get(ei);
+		
+		String dir = dirBase + File.separator + "test_" + cc.getEdgels().indexOf(e);
+		
+		File dirf = new File(dir);
+		if( ! dirf.exists() ){ dirf.mkdir(); } 
+		
+//		cc.writeEdgelPatchAndMatches(e, dir);
+		cc.writeEdgelDepthPatchAndMatches(e, dir);
+		
+	}
+	
+	public static <T extends RealType<T> & NativeType<T>> void testEdgelMatchesWrite(CrackCorrection<T> cc, int downSampleFactor)
+	{
+
+		double[] testPt = new double[]{ 159,253,73 }; 
+		
+		ArrayUtil.divide(testPt, downSampleFactor);
+		
+		int eidx = cc.edgelIdxNearest(testPt);
+		Edgel testEdgel = cc.getEdgels().get(eidx);
+		
+		String edgelCsvFn = "";
+		switch ( cc.edgelMatcher.getSearchType() )
+		{
+		case COUNT:
+			edgelCsvFn = "/groups/jain/home/bogovicj/projects/crackPatching/closeup/matches_ds4/"
+					+ "edgelMatches" + cc.edgelMatcher.getEdgelSearchCount() +"_Near_"+ eidx + "_filt.csv";
+			break;
+		case RADIUS:
+			edgelCsvFn = "/groups/jain/home/bogovicj/projects/crackPatching/closeup/matches_ds4/"
+					+ "edgelMatches_Rad-"+ cc.edgelMatcher.getEdgelSearchRadius() + "_Near_"+ eidx + "_filt.csv";
+			break;
+		default:
+			edgelCsvFn = "/groups/jain/home/bogovicj/projects/crackPatching/closeup/matches_ds4/"
+					+ "edgelMatchesNear_"+ eidx + "_filt.csv";
+			break;
+		}
+		
+		System.out.println("testEdgel: " + testEdgel );
+		try {
+			cc.edgelMatcher.computeAndWriteEdgelMatches(edgelCsvFn, testEdgel);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
 	public static void edgelFeatures()
 	{
 		int downSampleFactor = 4;
@@ -73,7 +154,6 @@ public class EdgelMatchingExps {
 //		em.setEdgelSearchCount(3000);
 		
 		em.setEdgelSearchRadius( searchRadius / (downSampleFactor) );
-		
 		em.setEdgels(cc.getEdgels());
 		
 		try {
@@ -231,8 +311,42 @@ public class EdgelMatchingExps {
 	
 	
 	public static void main(String[] args) {
-
-		edgelFeatures();
+		
+		int downSampleFactor = 4;
+		double searchRadius = 100;
+		int    searchCount  = 2000;
+		
+		String imgfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/groundTruth/closeup/img_ds"+downSampleFactor+".tif";
+		String maskfn = "/groups/jain/home/bogovicj/projects/crackSegmentation/groundTruth/closeup/labels_interp_smooth_ds"+downSampleFactor+".tif";
+		Img<FloatType> img =  ImagePlusAdapter.convertFloat( IJ.openImage(imgfn) );
+		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );
+		
+//		int[] patchSize = new int[] { 15, 15, 9 };
+		int[] patchSize = new int[] { 31, 31, 19 };
+//		int[] patchSize = new int[] { 15, 15, 13 };
+		
+		CrackCorrection<FloatType> cc = new CrackCorrection<FloatType>(
+				img, mask, patchSize);
+		
+		EdgelMatching<FloatType> em = new EdgelMatching<FloatType>(img, mask, patchSize);
+		em.debugDir = "/groups/jain/home/bogovicj/projects/crackPatching/cropEdgelMatch";
+		em.debugSuffix = "ds"+downSampleFactor;
+		
+		cc.edgelMatcher = em;
+		
+		cc.edgelMatcher.setEdgelSearchRadius( searchRadius / (downSampleFactor) );
+		
+//		cc.edgelMatcher.setSearchType( EdgelMatching.SearchTypes.COUNT );
+//		cc.edgelMatcher.setEdgelSearchCount( searchCount );
+		
+		cc.computeEdgels();
+		cc.edgelMatcher.setEdgels(cc.getEdgels());
+		
+		testEdgelMatchesWrite( cc, downSampleFactor );
+		
+//		edgelPatchWrite( cc, downSampleFactor );
+		
+//		edgelFeatures();
 		
 //		tryMatching();
 		
