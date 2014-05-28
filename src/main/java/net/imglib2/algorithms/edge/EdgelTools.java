@@ -15,8 +15,10 @@ import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.algorithms.region.localneighborhood.CrossShape;
 import net.imglib2.algorithms.region.localneighborhood.CrossShape.NeighborhoodsAccessible;
 import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.*;
 import net.imglib2.realtransform.*;
 import net.imglib2.view.*;
@@ -98,7 +100,7 @@ public class EdgelTools {
 		double lastVal = ra.get().getRealDouble();
 		
 		
-		for ( long i=src.min(0)+1; i<src.max(0); i++){
+		for ( long i=src.min(0)+1; i<=src.max(0); i++){
 			ra.setPosition(i, 0);
 			double curVal = ra.get().getRealDouble();
 			
@@ -287,4 +289,5 @@ public class EdgelTools {
 
 		return rv;
 	}
+	
 }

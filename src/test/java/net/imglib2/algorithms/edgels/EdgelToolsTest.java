@@ -151,6 +151,28 @@ public class EdgelToolsTest {
 	}
 
 	@Test
+	public void testZeroXingClose()
+	{
+		ArrayImgFactory<FloatType> fact = new ArrayImgFactory<FloatType>();
+		Img<FloatType> img = fact.create( new int[]{19} , new FloatType());
+
+		float[] dat = new float[]{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				2.1e-8f, 0.019f, 0.215f, 4.11f, 17.434f, 32.553f, -17.65f };
+
+
+		RandomAccess<FloatType> ra = img.randomAccess();
+		for( int i=0; i<19; i++){
+			ra.setPosition(i, 0);
+			ra.get().set(dat[i]);
+		}
+
+		double xing = EdgelTools.zeroXing1d(img);
+
+		logger.info("xing: " + xing);
+		
+	}
+	
+	@Test
 	public void testLaplacianEdge1dClose()
 	{
 		Img<FloatType> img = ImgOps.createEdgeImg( new int[]{21},
