@@ -1,11 +1,11 @@
 package net.imglib2.algorithms.crack;
 
+import java.io.File;
 import java.util.ArrayList;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
-import edu.jhu.ece.iacl.algorithms.MGDM.MgdmDecomposition;
 import edu.jhu.ece.iacl.utility.ArrayUtil;
 import ij.IJ;
 import ij.ImagePlus;
@@ -72,7 +72,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 	int[] patchSize;
 	int[] patchSizeSub;
 	
-	EdgelMatching<T> edgelMatcher;
+	public EdgelMatching<T> edgelMatcher;
 
 	private int maxNumNormalSteps = 30;
 	private double edgelGradThresh = 20;
@@ -112,6 +112,15 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 		edgelMatcher = new EdgelMatching<T>(img, mask, patchSize);
 		
 	}
+	public Img<T> getImg(){
+		return img;
+	}
+	public Img<T> getMask(){
+		return mask;
+	}
+	public int[] getPatchSize(){
+		return patchSize;
+	}
 
 	public ArrayList<Edgel> getEdgels(){
 		return edgels;
@@ -126,7 +135,6 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 	}
 
 	public void computeEdgels() {
-
 		edgels = SubpixelEdgelDetection.getEdgels(mask, mask.factory(), edgelGradThresh );
 		logger.info("num edgels " + edgels.size());
 
@@ -180,6 +188,106 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 		}
 
 		return i;
+	}
+	
+	/**
+	 * Writes the patch associated with an edgel,
+	 * along with its candidate matches.
+	 * 
+	 * @param e the edgel
+	 * @param dir directory to write to
+	 */
+	public void writeEdgelPatchAndMatches( Edgel e, String dir )
+	{
+		if ( edgelMatcher.getEdgels() == null ){
+			edgelMatcher.setEdgels(this.edgels);
+		}
+		
+		// write this Edgel
+		Img<T> tmp = img.factory().create( patchSize, img.firstElement());
+		
+		ImgOps.copyInto(
+				EdgelTools.edgelToView(e, img, patchSize), 
+				tmp );
+		ImgOps.writeFloat(tmp, dir + File.separator + "eoiPatch_"+
+				edgels.indexOf(e)+".tif");
+		
+		ArrayList<Edgel> candlist = edgelMatcher.candidateEdgels(e);
+		
+		int i = 0;
+		for( Edgel c : candlist )
+		{
+			if( i++ % 10 == 0 ){
+				logger.info(" writing edgel patch " + i + " of " + candlist.size());
+			}
+			
+			ImgOps.copyInto(
+					EdgelTools.edgelToView( c, img, patchSize ), 
+					tmp );
+			ImgOps.writeFloat(tmp, dir + File.separator + "eoiMatch_"+
+				edgels.indexOf(c)+".tif");
+			
+//			break; // for debug
+		}
+		
+	}
+	
+	/**
+	 * Writes the crack depth map associated with the given edgel,
+	 * along with depth-resampled patches.
+	 * Also writes the same images for candidate matches to that edgel.
+	 * 
+	 * @param e the edgel
+	 * @param dir directory to write to
+	 */
+	public void writeEdgelDepthPatchAndMatches( Edgel e, String dir )
+	{
+		if ( edgelMatcher.getEdgels() == null ){
+			edgelMatcher.setEdgels(this.edgels);
+		}
+		int[] depthPatchSize = new int[patchSize.length - 1];
+		for( int i=0; i<depthPatchSize.length; i++)
+		{
+			depthPatchSize[i] = patchSize[i];
+		}
+		
+		logger.info(" test edgel: " + e);
+		
+		// write this Edgel
+		Img<T> tmp = img.factory().create( patchSize, img.firstElement());
+		depthPatch = img.factory().create( depthPatchSize, img.firstElement());
+		
+		// compute depth 
+		CrackCorrection.computeCrackDepthNormalMask(e, mask, patchSize, depthPatch);
+		// depth sampled patch
+		sampleImgByDepth(e , tmp);
+		ImgOps.writeFloat(tmp, dir + File.separator + "eoiDPatch_"+
+				edgels.indexOf(e)+".tif");
+		ImgOps.writeFloat(depthPatch, dir + File.separator + "eoiDepth_"+
+				edgels.indexOf(e)+".tif");
+		
+		ArrayList<Edgel> candlist = edgelMatcher.candidateEdgels(e);
+		edgelMatcher.filterEdgelsByNormal(e, candlist);
+		
+		int i = 0;
+		for( Edgel c : candlist )
+		{
+			if( i++ % 10 == 0 ){
+				logger.info(" writing edgel patch " + i + " of " + candlist.size());
+			}
+			
+			// compute depth 
+			CrackCorrection.computeCrackDepthNormalMask(c, mask, patchSize, depthPatch);
+			// depth sampled patch
+			sampleImgByDepth(c , tmp);
+			ImgOps.writeFloat(tmp, dir + File.separator + "matchDPatch_"+
+					edgels.indexOf(c)+".tif");
+			ImgOps.writeFloat(depthPatch, dir + File.separator + "matchDepth"+
+					edgels.indexOf(c)+".tif");
+			
+//			break; // for debug
+		}
+		
 	}
 	
 	public void registerEdgelsOrient( Edgel e, Edgel f, int i )
@@ -487,7 +595,24 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 		
 	}
 	
-	
+	public double computeDepthLap( Edgel edgel )
+	{
+		int[] sz = new int[]{ 1, 1, 19 };
+		RealTransformRandomAccessible<T,?> mskEdgelView = 
+				EdgelTools.edgelToView( edgel, mask, sz );
+		
+		Img<T> lap1d = mask.factory().create(
+				new int[]{19}, mask.firstElement());
+		
+		MixedTransformView<T> cedgeView = Views.hyperSlice(mskEdgelView, 0, 0);
+		cedgeView = Views.hyperSlice(cedgeView, 0, 0);
+		
+		EdgelTools.laplacian( cedgeView, lap1d);
+		
+		double edgeX = EdgelTools.zeroXing1d( lap1d );
+		
+		return edgeX;
+	}
 	
 	public void computeCrackDepthNormalMask(Edgel edgel )
 	{
@@ -674,85 +799,7 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 		}
 	}
 
-	
-	public Img<FloatType> compMaskDistMgdm()
-	{
-		int[][][] maskInt = ImgOps.toIntArray3d(mask);
-		boolean[][][] m = new boolean[maskInt.length][maskInt[0].length][maskInt[0][0].length];
-		ArrayUtil.fill(m, true);
 
-		MgdmDecomposition mgdm = new MgdmDecomposition(maskInt, 2, m);
-		float[][][] d1 = mgdm.exportDistanceForObject3d(0);
-
-		Img<FloatType> distXfmImg = null;
-
-		//			logger.info( "writing patches" );
-		ArrayImgFactory<FloatType> factory = new ArrayImgFactory<FloatType>();
-
-		distXfmImg = factory.create(img, new FloatType(img
-				.firstElement().getRealFloat()));
-		ImgOps.copyToImg(distXfmImg, d1);
-		
-		ImagePlus ip1;
-//		try {
-//			
-//			ip1 = ImgUtil.toImagePlus(distXfmImg);
-//			
-//			IJ.save(ip1,
-//					"/groups/jain/home/bogovicj/projects/crackSegmentation/toy/distXfm.tif");
-//
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
-		
-		return distXfmImg;
-	}
-
-	public void computeLocalCrackDepthDistFunc(Edgel edgel, int[] patchSize) {
-		logger.debug("computeLocalCrackDepthDistFunc");
-
-//		ImgUtil.printNumNonZero(mask);
-//		ArrayList<Integer> uniqueList = ImgUtil.uniqueInt(mask);
-//		System.out.println("unique in mask:\n" + uniqueList);
-
-		int[][][] maskInt = ImgOps.toIntArray3d(mask);
-		boolean[][][] m = new boolean[maskInt.length][maskInt[0].length][maskInt[0][0].length];
-		ArrayUtil.fill(m, true);
-
-		MgdmDecomposition mgdm = new MgdmDecomposition(maskInt, 2, m);
-		float[][][] d1 = mgdm.exportDistanceForObject3d(0);
-
-		try {
-
-			//			logger.info( "writing patches" );
-			ArrayImgFactory<FloatType> factory = new ArrayImgFactory<FloatType>();
-
-			Img<FloatType> distXfmImg = factory.create(img, new FloatType(img
-					.firstElement().getRealFloat()));
-
-			ImgOps.copyToImg(distXfmImg, d1);
-			ImagePlus ip1 = ImgOps.toImagePlus(distXfmImg);
-			IJ.save(ip1,
-					"/groups/jain/home/bogovicj/projects/crackSegmentation/intermRes/distXfm.tif");
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
-//		int c =  ImgUtil.numLessThanZero(d1);
-//		System.out.println(" count dist<=0 :" + c);
-
-		Img<T> d1img = img.factory().create(img, img.firstElement());
-		ImgOps.copyToImg(d1img, d1);
-
-//		Img<T> depthPatch = 
-		edgelToImage(edgel, d1img, patchSize);
-
-//		int cp = ImgUtil.numLessThanZero(depthPatch);
-//		System.out.println(" count patch dist<=0 :" + cp);
-
-//		return depthPatch;
-	}
 
 	public static <T extends RealType<T> & NativeType<T>> void computeCrackDepthNormalMask(
 			Edgel edgel, 
@@ -807,11 +854,19 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 			EdgelTools.laplacian(cedgeView, lap1d);
 			double edgeX = EdgelTools.zeroXing1d( lap1d );
 			
+			if( Double.isNaN( edgeX ))
+			{
+				logger.debug(" edgel: " + edgel );
+				logger.debug( " cedgeView: " + ImgOps.printCursorOutput(cedgeView, lap1d) );
+				logger.debug( " lap: " + ImgOps.printCursorOutput(lap1d) );
+				logger.debug(" ");
+			}
+			
 			// a depth of zero corresponds to a zero crossing at the midpoint 
 			// so subtract the midpoint value here
 			edgeX -= patchMidPt[ndims-1];
 			
-			logger.trace(" edgeX " + edgeX + "\n");
+			logger.debug(" edgeX " + edgeX + "\n");
 			
 			if( !Double.isNaN(edgeX) )
 			{
@@ -1524,13 +1579,11 @@ public class CrackCorrection<T extends NativeType<T> & RealType<T>> {
 	   
 	public static void main(String[] args){
 
-//		testDistanceBasedCrackSideComp();	
-		
 //		testEdgelResamp();
 		
 //		testEdgelResamp2();
 		
-		testCrackCorrPipeline();
+//		testCrackCorrPipeline();
 		
 //		testCombReplace();
 		

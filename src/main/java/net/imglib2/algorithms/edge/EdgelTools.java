@@ -1,5 +1,7 @@
 package net.imglib2.algorithms.edge;
 
+import ij.IJ;
+
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.ejml.data.DenseMatrix64F;
@@ -14,11 +16,13 @@ import net.imglib2.algorithms.edgels.EdgelToolsTest;
 import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.algorithms.region.localneighborhood.CrossShape;
 import net.imglib2.algorithms.region.localneighborhood.CrossShape.NeighborhoodsAccessible;
+import net.imglib2.img.ImagePlusAdapter;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.ImgOps;
 import net.imglib2.*;
 import net.imglib2.realtransform.*;
 import net.imglib2.view.*;
@@ -27,7 +31,7 @@ import net.imglib2.view.composite.*;
 public class EdgelTools {
 
 
-	protected static Logger logger = LogManager.getLogger(EdgelTools.class
+	public static Logger logger = LogManager.getLogger(EdgelTools.class
 			.getName());
 
 
@@ -288,6 +292,36 @@ public class EdgelTools {
 			RealViews.transform( interpolant, xfm.inverse() );
 
 		return rv;
+	}
+	
+	public static void testEdgelView(){
+		int downSampleFactor = 2;
+		
+		String imgfn = "/data-ssd1/john/projects/crackSegmentation/groundTruth/closeup/img_ds"+downSampleFactor+".tif";
+		String maskfn = "/data-ssd1/john/projects/crackSegmentation/groundTruth/closeup/labels_interp_smooth_ds"+downSampleFactor+".tif";
+		Img<FloatType> img =  ImagePlusAdapter.convertFloat( IJ.openImage(imgfn) );
+		Img<FloatType> mask = ImagePlusAdapter.convertFloat( IJ.openImage(maskfn) );
+		
+		Edgel e = new Edgel( new double[]{87.07,103.04,204.02},
+							 new double[]{0.83,0.52,0.20}, 72.03 );
+		
+		int[] patchSize = new int[]{43,43,19};
+		RealTransformRandomAccessible<FloatType, InverseRealTransform> view = EdgelTools.edgelToView(e, mask, patchSize);
+		
+		Img<FloatType> imgOut = img.factory().create(patchSize, img.firstElement());
+		
+		ImgOps.copyInto( view, imgOut );
+		
+		ImgOps.writeFloat(imgOut, "/groups/jain/home/bogovicj/tmp/edgelView.tif");
+		
+	}
+	
+	
+	public static void main (String[] args)
+	{
+//		testEdgelView();
+		
+		
 	}
 	
 }

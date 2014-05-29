@@ -1,6 +1,10 @@
 % clear classes; clear java; clc;
 global FIJIPATH;        % locaction of fiji install
 global IMGLIB2PATH;     % location of imglib2
+global DATDIR;          % location of data
+
+javaaddpath('/groups/jain/home/bogovicj/lib_workspace/hhmi-exp/target/classes');
+javaaddpath('/groups/jain/home/bogovicj/dev/imglibFork/pom-imglib2/algorithms/core/target/classes');
 
 FIJIPATH = '/groups/jain/home/bogovicj/packages/Fiji.app';
 IMGLIB2PATH = '/groups/jain/home/bogovicj/packages/Fiji.app';
@@ -16,7 +20,7 @@ EXPPATH    = '/groups/jain/home/bogovicj/saalfeldExp';
 
 JBJAINPATH = '/groups/jain/home/bogovicj/workspace/janelia_jainlab';
 MGDMPATH = '/groups/jain/home/bogovicj/workspace/mgdm';
- 
+
 VERBOSE    = false;
 
 if(~isdeployed)
@@ -28,11 +32,11 @@ if(~isdeployed)
     addpath(genpath('/groups/jain/home/bogovicj/lib_workspace/hhmi-exp/matlab'));
 end
 
-% addpath('/groups/jain/home/bogovicj/pubDrafts/paper_flash_features/code/handselected_exps');
-
 % setdbprefs('FetchBatchSize','1000')
 % setdbprefs('FetchInBatches','no')
 
-
 % rng('shuffle')
-% 
+
+%% build static java classpath from maven dependencies
+% cmd = 'dependency:build-classpath | grep ''Dependencies classpath'' -A 1 | tr '':'' ''\n'''
+% system( cmd );

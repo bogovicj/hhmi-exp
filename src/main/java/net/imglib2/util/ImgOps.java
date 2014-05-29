@@ -274,6 +274,24 @@ public class ImgOps {
 		}
 	}
 	
+	/**
+	 * For Matlab
+	 */
+	public static void writeToTiff(double[][][] im, String fn ){
+		int nx = im.length;
+		int ny = im[0].length;
+		int nz = im[0][0].length;
+		
+		ImageStack stack = ImageStack.create( nx, ny, nz, 32 );
+		for ( int z=0; z<nz; z++){
+			ImageProcessor slc = stack.getProcessor(z+1);
+			for ( int x=0; x<nx; x++)for ( int y=0; y<ny; y++){
+				slc.setf(x, y, (float)im[x][y][z]);
+			}
+		}
+		ImagePlus imp = new ImagePlus( "", stack);
+		IJ.save(imp, fn);
+	}
 
 	
 	public static <T extends RealType<T>> Img<T> collapseSum(Img<T> in){
@@ -419,7 +437,6 @@ public class ImgOps {
       
       return out;
    }
-
    public static <T extends RealType<T>> float[][][] toFloatArray3d(Img<T> img){
       float[][][] out = new float[(int)img.dimension(0)][(int)img.dimension(1)][(int)img.dimension(2)];
       Cursor<T> cursor = img.localizingCursor();
@@ -430,6 +447,17 @@ public class ImgOps {
          out[pos[0]][pos[1]][pos[2]] = (cursor.get().getRealFloat());
       }
       return out;
+   }
+   public static <T extends RealType<T>> double[][][] toDoubleArray3d(Img<T> img){
+	   double[][][] out = new double[(int)img.dimension(0)][(int)img.dimension(1)][(int)img.dimension(2)];
+	   Cursor<T> cursor = img.localizingCursor();
+	   int[] pos = new int[3];
+	   while(cursor.hasNext()){
+		   cursor.next();
+		   cursor.localize(pos);
+		   out[pos[0]][pos[1]][pos[2]] = (cursor.get().getRealDouble());
+	   }
+	   return out;
    }
    
    public static <T extends RealType<T>> void copyToImg(Img<T> img, int[][][] in){
@@ -918,5 +946,29 @@ public class ImgOps {
 		}
 		System.out.print("\n");
 	}
-
+	
+	public static <T> String printCursorOutput(IterableInterval<T> itvl){
+		Cursor<T> c = itvl.cursor();
+		String str = "";
+		while( c.hasNext() ){
+			c.fwd();
+			str += " " + c.get();
+		}
+		str += "\n";
+		return str;
+	}
+	
+	public static <T> String printCursorOutput(RandomAccessible<T> im, IterableInterval<?> itvl){
+		
+		Cursor<?> c = itvl.cursor();
+		RandomAccess<T> ra = im.randomAccess();
+		String str = "";
+		while( c.hasNext() ){
+			c.fwd();
+			ra.setPosition(c);
+			str += " " + ra.get();
+		}
+		str += "\n";
+		return str;
+	}
 }
