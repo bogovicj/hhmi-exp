@@ -94,6 +94,11 @@
   		<artifactId>imagescience</artifactId>
   		<version>2.4.2-SNAPSHOT</version>
   	</dependency>
+  	<dependency>
+  		<groupId>jitk</groupId>
+  		<artifactId>jitk-tps</artifactId>
+  		<version>0.0.1-SNAPSHOT</version>
+  	</dependency>
   </dependencies>
   	<repositories>
 		<!-- NB: for project parent -->
