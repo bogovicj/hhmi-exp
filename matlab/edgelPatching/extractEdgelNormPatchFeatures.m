@@ -116,7 +116,7 @@ end
 
 sz = [ img.dimension(0), img.dimension(1), img.dimension(2) ];
 metrics = zeros( nMatches, 1);
-metricImg = zeros(sz ); % tiff image visualizing output
+metricImg = 2.*ones( sz ); % image visualizing output
 
 for i = 1:nMatches
     
