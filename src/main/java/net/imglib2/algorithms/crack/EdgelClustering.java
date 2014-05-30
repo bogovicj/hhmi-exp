@@ -2,8 +2,11 @@ package net.imglib2.algorithms.crack;
 
 import ij.IJ;
 
+import java.text.Format;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 
 import net.imglib2.RandomAccess;
@@ -24,10 +27,10 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 {
 		
 	public static final byte UNKNOWN   =  0;
-	public static final byte CONFLICT  = -2;
+	public static final byte CONFLICT  =  3;
 	
-	public static final byte CLASSA = -1;
-	public static final byte CLASSB =  1;
+	public static final byte CLASSA =  1;
+	public static final byte CLASSB =  2;
 	
 	
 	private final List<Edgel> edgels;
@@ -36,7 +39,15 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 	private boolean[][] nbrTable;
 	private byte[] labels;
 	
-	private int maxIters = 1;
+	
+	private float[] labelMems;
+	private float   propMul 	= 1f;
+	private float   eps     	= 0.000001f;
+	
+	private float   propThresh 	= 0.1f;
+	private float   dotThresh   = 0.3f;
+	
+	private int maxIters = 3;
 	
 	static Logger logger = LogManager.getLogger( EdgelClustering.class.getName() );
 	
@@ -47,27 +58,31 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 	
 	public void cluster(){
 		
-		findNeighbors();
+//		findNeighbors();
 		
 		int nConflicts        = 9999;
 		int lastIterConflicts = 9999;
 		
 		for( int i = 0; i<maxIters; i++ )
 		{
+
+			logger.info("iteration " + i + " of " + maxIters );
 			
 			// run an iteration
-			nConflicts = iteration();
+//			nConflicts = iteration();
+			nConflicts = iterationMem();
 			
-			if ( nConflicts == 0 ){
-				break;
-			}
-			
-			if ( lastIterConflicts == nConflicts ){
-				break;
-			}
+//			if ( nConflicts == 0 ){
+//				break;
+//			}
+//			
+//			if ( lastIterConflicts == nConflicts ){
+//				break;
+//			}
 			
 			lastIterConflicts = nConflicts;
 			
+			ArrayUtil.multiply(labelMems, 2);
 		}
 	}
 	
@@ -82,11 +97,124 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 			for( int d=0; d<clusterImg.numDimensions(); d++){
 				ra.setPosition( (int)(Math.round( e.getDoublePosition(d) )), d);
 			}
-			ra.get().setOne();
-			if( labels[i] == CLASSB ){
-				ra.get().mul(2.0);
+			if( labels[i] == CLASSA ){
+				ra.get().setReal( 1 );
+			}else if( labels[i] == CLASSB ){
+				ra.get().setReal( 2 );
+			}else if( labels[i] == CONFLICT ){
+				ra.get().setReal( 3 );
 			}
 			
+		}
+	}
+	public void makeEdgelClusterImgMem( Img<T> clusterImg ){
+		
+		RandomAccess<T> ra = clusterImg.randomAccess();
+		
+		int N = edgels.size();
+		for ( int i = 0; i < N; i++ )
+		{
+			Edgel e = edgels.get(i);
+			for( int d=0; d<clusterImg.numDimensions(); d++){
+				ra.setPosition( (int)(Math.round( e.getDoublePosition(d) )), d);
+			}
+			ra.get().setReal(labelMems[i]);
+			
+		}
+	}
+	
+	public int iterationMem()
+	{
+		int N = edgels.size();
+		if( labelMems == null ){
+			labelMems = new float[ N ];
+		}
+		
+		for ( int i = 0; i < N; i++ )
+//		for ( int i = 0; i < 3; i++ )
+		{
+			if ( i % 5000 == 0){
+				logger.info("   edgel " + i + " of " + edgels.size() );
+			}
+			
+			Edgel e = edgels.get(i);
+			ArrayList<Edgel> matches = matcher.candidateEdgels( e );
+//			boolean[] sameSide = matcher.similarlyOriented(e, matches);
+			float[] dots = matcher.dotProduct(e, matches);
+
+			// initialize
+			if( i == 0){ labelMems[i] = 1.0f; }
+			
+			float thisClass = labelMems[i];
+			
+			if( Math.abs(thisClass) < eps ){
+//				logger.info(" find best among " + matches.size() + " matches ");
+//				labelMems[i] = bestClassMem( sameSide, matches );
+				labelMems[i] = bestClassMem( dots, matches );
+			}else if ( Math.abs(thisClass) > propThresh ){
+//				logger.info(" propagate to " + matches.size() + " matches ");
+//				propagateClassMem( i, sameSide, matches );
+				propagateClassMem( i, dots, matches );
+			}
+			
+		}
+		
+		return 1;
+	}
+	public float bestClassMem( float[] dots, List<Edgel> matches ){
+
+		float memOut = 0.0f;
+		float dotSum = 0.0f;
+		for ( int j=0; j<matches.size(); j++ )
+		{
+			Edgel match = matches.get(j);
+			int k = edgels.indexOf(match);
+
+			if ( Math.abs(labelMems[k]) > propThresh &&
+				 Math.abs(dots[j]) > dotThresh	)
+			{
+				memOut += dots[j];
+			}
+		}
+		memOut /= matches.size();
+
+		return memOut;
+	}
+	
+	public void propagateClassMem( int i, float[] dots, List<Edgel> matches ){
+		
+		float thisMem = labelMems[i];
+		
+		for ( int j=0; j<matches.size(); j++ )
+		{
+			Edgel match = matches.get(j);
+			int k = edgels.indexOf(match);
+			
+			if( Math.abs(labelMems[k]) < eps &&
+				Math.abs(dots[j]) > dotThresh )
+			{
+				labelMems[k] =   propMul * dots[j] * thisMem;
+			}
+		}
+	}
+
+	
+	public void propagateClassMem( int i, boolean[] sameSide, List<Edgel> matches ){
+		
+		float thisMem = labelMems[i];
+		
+		for ( int j=0; j<matches.size(); j++ )
+		{
+			Edgel match = matches.get(j);
+			int k = edgels.indexOf(match);
+			
+			if( labelMems[k] < eps ){
+				if( sameSide[j] ){
+					labelMems[k] =   propMul * thisMem;
+				}else{
+					labelMems[k] = - propMul * thisMem;
+				}
+			}
 		}
 	}
 	
@@ -99,7 +227,11 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 		Arrays.fill(labels, UNKNOWN);
 		
 		for ( int i = 0; i < N; i++ )
+//		for ( int i = 0; i < 3; i++ )
 		{
+			if ( i % 5000 == 0){
+				logger.info("   edgel " + i + " of " + edgels.size() );
+			}
 			
 			Edgel e = edgels.get(i);
 			ArrayList<Edgel> matches = matcher.candidateEdgels( e );
@@ -111,20 +243,23 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 			byte thisClass = labels[i];
 			
 			if( thisClass == UNKNOWN ){
+//				logger.info(" find best among " + matches.size() + " matches ");
 				labels[i] = bestClass( sameSide, matches );
 			}else{
+//				logger.info(" propagate to " + matches.size() + " matches ");
 				propagateClass( i, sameSide, matches );
 			}
 			
 		}
 		
-		return 0;
+		return 1;
 	}
+
 	
 	public void propagateClass( int i, boolean[] sameSide, List<Edgel> matches ){
 		
 		byte thisClass = labels[i];
-		byte othrClass = (byte)(-1 * labels[i]);
+		byte othrClass = otherClass( thisClass );
 		
 		for ( int j=0; j<matches.size(); j++ )
 		{
@@ -137,16 +272,30 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 				}else{
 					labels[k] = othrClass;
 				}
-			}else{
-				if( isConflict(  thisClass, labels[k], sameSide[j]) ){
-					labels[k] = CONFLICT;
-					labels[i] = CONFLICT;
-				}
 			}
+//			else{
+//				if( isConflict(  thisClass, labels[k], sameSide[j]) ){
+//					labels[k] = CONFLICT;
+//					labels[i] = CONFLICT;
+//				}
+//			}
 		}
 	}
 	
+	
+	public byte otherClass( byte thisClass ){
+		if( thisClass == CLASSA ){
+			 return CLASSB;
+		}else if( thisClass == CLASSB){
+			return CLASSA;
+		}
+		return UNKNOWN;
+	}
+	
+	
+	
 	public byte bestClass( boolean[] sameSide, List<Edgel> matches ){
+		
 		int aCount = 0;
 		int bCount = 0;
 		
@@ -156,15 +305,29 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 			int k = edgels.indexOf(match);
 			
 			if( labels[k] == CLASSA ){
-				aCount++;
+				if( sameSide[j] ){
+					aCount++;	
+				}else{
+					bCount++;
+				}
+				
 			}else if( labels[k] == CLASSB ){
-				bCount++;
+				if( sameSide[j] ){
+					bCount++;
+				}else{
+					aCount++;
+				}
 			}
 		}
 		
-		if( aCount > 0 & bCount ==0 ){
+//		if( aCount > 0 && bCount == 0 ){
+//			return CLASSA;
+//		}else if( bCount > 0 && aCount == 0){
+//			return CLASSB;
+//		}
+		if( aCount > 2*bCount ){
 			return CLASSA;
-		}else if( bCount > 0 & aCount == 0){
+		}else if( bCount > 2*aCount ){
 			return CLASSB;
 		}
 		return UNKNOWN;
@@ -195,7 +358,7 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 			ArrayList<Edgel> matches = matcher.candidateEdgels( e );
 			boolean[] sameSide = matcher.similarlyOriented(e, matches);
 			
-			if ( i % 50 == 0){
+			if ( i % 200 == 0){
 				logger.info(" edgel " + i + " of " + edgels.size() );
 			}
 			for ( int j=0; j<matches.size(); j++ )
@@ -214,7 +377,7 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 		
 		int downSampleFactor = 4;
 //		double searchRadius = 100;
-		int    searchCount  = 50;
+		int    searchCount  = 60;
 		
 		String imgfn = "/data-ssd1/john/projects/crackSegmentation/groundTruth/closeup/img_ds"+downSampleFactor+".tif";
 		String maskfn = "/data-ssd1/john/projects/crackSegmentation/groundTruth/closeup/labels_interp_smooth_ds"+downSampleFactor+".tif";
@@ -247,10 +410,17 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 		
 		ec.cluster( );
 		Img<FloatType> clusterImg = img.factory().create( img, img.firstElement());
-		ec.makeEdgelClusterImg( clusterImg );
+//		ec.makeEdgelClusterImg( clusterImg );
+		ec.makeEdgelClusterImgMem( clusterImg );
 		
-		ImgOps.writeFloat( clusterImg, "/groups/jain/home/bogovicj/tmp/edgelClusters.tif");
+		Format formatter = new SimpleDateFormat("yyyyMMdd-HHmmss");
+		String dtstr = formatter.format(Calendar.getInstance().getTime());
+		String fn = String.format("/groups/jain/home/bogovicj/tmp/edgelClustersMem_%s.tif", dtstr);
+		logger.info("fn: " + fn);
+		ImgOps.writeFloat( clusterImg, fn);
 		
+		
+		/* CHECK CONFLICT CONDITION METHOD */
 //		System.out.println( "A A S :"  + isConflict( CLASSA, CLASSA, true));
 //		System.out.println( "A B S :"  + isConflict( CLASSA, CLASSB, true));
 //		System.out.println( "A A D :"  + isConflict( CLASSA, CLASSA, false));
