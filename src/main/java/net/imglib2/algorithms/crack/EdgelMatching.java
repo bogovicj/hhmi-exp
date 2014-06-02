@@ -11,6 +11,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -149,6 +150,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		case COUNT:
 			countSearch = new  KNearestNeighborSearchOnKDTree<Edgel>( edgelTree, getEdgelSearchCount());
 			logger.info("" + getEdgelSearchCount() +"-Nearest neighbor search");
+			break;
 		default:
 			radiusSearch = new  RadiusNeighborSearchOnKDTree<Edgel>( edgelTree );
 			logger.info("" + getEdgelSearchRadius()+  " radius search");
@@ -218,6 +220,47 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 		}
 	}
 
+	/**
+	 * Returns a boolean array indicating whether 
+	 * Does not modify the candidates array.
+	 * @param e
+	 * @param candidates
+	 * @return 
+	 */
+	public boolean[] similarlyOriented(Edgel e, List<Edgel> candidates)
+	{
+		boolean[] match = new boolean[ candidates.size() ];
+		Arrays.fill(match, false);
+		
+		for(int i=candidates.size()-1; i>=0; i--)
+		{
+			double dot = LinAlgHelpers.dot(e.getGradient(), candidates.get(i).getGradient());
+			logger.trace(" dot " + dot);
+			if(  dot >= 0 ){
+				match[i] = true;
+			}
+		}
+		return match;
+	}
+	
+	/**
+	 * Returns a the dot product of the orientation of edgel e
+	 * and each of the edgels in the input list
+	 * @param e
+	 * @param candidates
+	 * @return 
+	 */
+	public float[] dotProduct(Edgel e, List<Edgel> candidates)
+	{
+		float[] dots = new float[ candidates.size() ];
+		
+		for(int i=candidates.size()-1; i>=0; i--)
+		{
+			double dot = LinAlgHelpers.dot(e.getGradient(), candidates.get(i).getGradient());
+			dots[i] = (float)dot;
+		}
+		return dots;
+	}
 
 	/**
 	 * Computes a likelihood that edgels i and j are a match.
