@@ -1,7 +1,19 @@
 package net.imglib2.algorithms.crack;
 
+import ij.IJ;
+import ij.ImagePlus;
+import ij.process.FloatProcessor;
+import ij.process.ImageProcessor;
+
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
+import java.util.Set;
+
+import net.imglib2.img.Img;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.ImgOps;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -20,9 +32,10 @@ import mpicbg.models.*;
 public class CrackTransformMesh implements InvertibleCoordinateTransform 
 {
 	
-	private float eps = 0.3f;
+	private float eps = 0.03f;
 	
 	final protected int nx, ny;
+	public int[] sz;
 	public float getNx(){ return nx; }
 	public float getNy(){ return ny; }
 	
@@ -35,9 +48,11 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 	final protected HashMap< PointMatch, ArrayList< AffineModel2D > > va = new HashMap< PointMatch, ArrayList< AffineModel2D > >();
 	public HashMap< PointMatch, ArrayList< AffineModel2D > > getVA(){ return va; };
 
+	final protected HashMap< AffineModel2D, Boolean > ac = new HashMap< AffineModel2D, Boolean >();
+	public HashMap< AffineModel2D, Boolean > getAC(){ return ac; }
+	
 	final static protected PointFactory< Point > defaultPointFactory = new PointFactory< Point >()
 	{
-		@Override
 		final public Point createPoint( final float[] l )
 		{
 			return new Point( l );
@@ -46,13 +61,13 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 
 	final static protected PointMatchFactory< PointMatch > defaultPointMatchFactory = new PointMatchFactory< PointMatch >()
 	{
-		@Override
+		
 		final public PointMatch createPointMatch( final Point p1, final Point p2 )
 		{
 			return new PointMatch( p1, p2 );
 		}
 
-		@Override
+		
 		final public PointMatch createPointMatch( final Point p1, final Point p2, final float w )
 		{
 			return new PointMatch( p1, p2, w );
@@ -64,6 +79,7 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 	public CrackTransformMesh( int nx, int ny, float width, float height){
 		this.nx = nx;
 		this.ny = ny;
+		sz = new int[]{ nx, ny };
 		
 		this.width  = width;
 		this.height = height;
@@ -72,6 +88,7 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 	public void reset(){
 		av.clear();
 		va.clear();
+		ac.clear();
 	}
 	
 	public void fromCrackParam( float[][] ctrlPts, float[][] ctrlPtOffsets )
@@ -87,36 +104,298 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 			return;
 		}
 		
-		float[] curPt = null;
-		float[] nxtPt = null;
-		
 		for ( int i = 0; i < N - 1; i++ )
 		{
-			
+			add( 	ctrlPts[ i ],   ctrlPtOffsets[ i ], 
+					ctrlPts[i+1], ctrlPtOffsets[i+1] );
 		}
 		
 	}
 	
-	public void add( float[] curPt, float[] nxtPt ){
-		float[] p1 = new float[2];
-		float[] p2 = new float[2];
-		float[] p3 = new float[2];
+	public static float[] intersection2d( float[] pt, float[] off, int[] sz, boolean neg )
+	{
+		float[] Xpt = new float[pt.length];
 		
+		// projection to 4 faces
+		float[][] faceVecs = createVectorsToFaces( pt, sz );
+		float maxDotR = -1f;
+		int k = -1;
+		for ( int i=0; i<4; i++)
+		{
+			float dot = off[0] * faceVecs[i][0] + off[1] * faceVecs[i][1];
+			
+			if( neg ){ dot *= -1; }
+			
+			if( dot <= 0 ){
+				continue;
+			}
+			double mag = Math.sqrt( (double)ArrayUtil.sumSquares( faceVecs[i] ) );
+			double dotRatio = dot/mag;
+			
+			
+			
+			if( dotRatio > maxDotR ){
+				maxDotR = (float)dotRatio;
+				k = i;
+			}
+		}
+		
+		float r = 0; 
+		if ( faceVecs[k][0] == 0f )
+		{
+			r = (faceVecs[k][1] / maxDotR);
+		}else{
+			r = (faceVecs[k][0] / maxDotR);
+		}
+		
+		Xpt[0] = pt[0] + r * off[0];
+		Xpt[1] = pt[1] + r * off[1];
+		
+		return Xpt;
+	}
+	
+	public static float[][] createVectorsToFaces( float[] pt, int[] sz ){
+		float[][] vecs = new float[4][2];
+		
+		//v1
+		vecs[0][0] = - pt[0];
+		//v2
+		vecs[1][1] = - pt[1];
+		//v3
+		vecs[2][0] = sz[0] - pt[0];
+		//v4
+		vecs[3][1] = sz[1] - pt[1];
+		return vecs;
+	}
+	
+	public static float[][] xfmPtList( float[] pt, float[] offset, int[] sz, float eps )
+	{
+		float[][] ptList = new float[12][];
+		
+		ptList[0] = intersection2d( pt, offset, sz, true );
+		ptList[1] = linCombo( 1f, pt, 0f, offset, -2*eps);
+		ptList[2] = linCombo( 1f, pt, 0f, offset, -eps);
+		ptList[3] = linCombo( 1f, pt, 0f, offset, eps);
+		ptList[4] = linCombo( 1f, pt, 0f, offset, 2*eps);
+		ptList[5] = intersection2d( pt, offset, sz, false );
+		
+		ptList[ 6] = ptList[0];
+		ptList[ 7] = linCombo( 1f, pt, -1f, offset, -2*eps);
+		ptList[ 8] = linCombo( 1f, pt, -1f, offset, -eps);
+		ptList[ 9] = linCombo( 1f, pt, 1f, offset, eps);
+		ptList[10] = linCombo( 1f, pt, 1f, offset, 2*eps);
+		ptList[11] = ptList[5];
+		
+		return ptList;
+	}
+	
+	
+	public void add( float[] curPt, float[] curOff, float[] nxtPt, float[] nxtOff ){
+		
+		float[] cptBndM = intersection2d( curPt, curOff, sz, true ); 
+		float[] cptBndP = intersection2d( curPt, curOff, sz, false );
+		
+		float[] nxtBndM = intersection2d( nxtPt, nxtOff, sz, true );
+		float[] nxtBndP = intersection2d( nxtPt, nxtOff, sz, false );
+		
+		// - constraint 
+		ArrayList<PointMatch> matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( cptBndM, curOff, 0f, 0f, 0f, 0f ));
+		matchList.add(makeMatch( nxtBndM, nxtOff, 0f, 0f, 0f, 0f ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 0f, -2*eps, -1f, -2*eps ));
+		addTriangle(matchList);
+		
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( cptBndM, curOff, 0f, 0f, 0f, 0f ));
+		matchList.add(makeMatch( curPt, curOff, 0f, -2*eps, -1f, -2*eps ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 0f, -2*eps, -1f, -2*eps ));
+		addTriangle(matchList);
+		
+		// - eps
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( curPt, curOff, 0f, -2*eps, -1f, -2*eps ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 0f, -2*eps, -1f, -2*eps ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 0f, -  eps, -1f, -  eps ));
+		addTriangle(matchList);
+		
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( curPt, curOff, 0f, -2*eps, -1f, -2*eps ));
+		matchList.add(makeMatch( curPt, curOff, 0f,   -eps, -1f,   -eps ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 0f,   -eps, -1f,   -eps ));
+		addTriangle(matchList);
+		
+		// - / + 
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( curPt, curOff, 0f,  eps,  1f,  eps ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 0f, -eps, -1f, -eps ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 0f, -eps, -1f, -eps ));
+		addTriangle( matchList, true );
+		
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( curPt, curOff, 0f,  eps,  1f,  eps ));
+		matchList.add(makeMatch( curPt, curOff, 0f, -eps,  1f, -eps ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 0f, -eps, -1f, -eps ));
+		addTriangle( matchList, true );
+		
+		// +
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( curPt, curOff, 0f, 2*eps, 1f, 2*eps ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 0f, 2*eps, 1f, 2*eps ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 0f,   eps, 1f,   eps ));
+		addTriangle(matchList);
+		
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( curPt, curOff, 0f, 2*eps, 1f, 2*eps ));
+		matchList.add(makeMatch( curPt, curOff, 0f,   eps, 1f,   eps ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 0f,   eps, 1f,   eps ));
+		addTriangle(matchList);
+		
+		// + constraint 
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( cptBndP, curOff, 0f, 0f, 0f, 0f ));
+		matchList.add(makeMatch( nxtBndP, curOff, 0f, 0f, 0f, 0f ));
+		matchList.add(makeMatch( nxtPt,   nxtOff, 0f, 2*eps, 1f, 2*eps ));
+		addTriangle(matchList);
+		
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( cptBndP, curOff, 0f, 0f, 0f, 0f ));
+		matchList.add(makeMatch( curPt,   curOff, 0f, 2*eps, 1f, 2*eps ));
+		matchList.add(makeMatch( nxtPt,   nxtOff, 0f, 2*eps, 1f, 2*eps ));
+		addTriangle(matchList);
+		
+	}
+	
+	public void addOld( float[] curPt, float[] curOff, float[] nxtPt, float[] nxtOff ){
+		
+		// - eps
+		ArrayList<PointMatch> matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( curPt, curOff, -2*eps, -(1f + eps)));
+		matchList.add(makeMatch( nxtPt, nxtOff, -eps, -1f ));
+		matchList.add(makeMatch( nxtPt, nxtOff, -2*eps, -(1f + eps)));
+		addTriangle(matchList);
+		
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( curPt, curOff, -2*eps, -(1f + eps)));
+		matchList.add(makeMatch( curPt, curOff, -eps, -1f ));
+		matchList.add(makeMatch( nxtPt, nxtOff, -eps, -1f ));
+		addTriangle(matchList);
+		
+		// - / + 
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( nxtPt, nxtOff, -eps, -1f ));
+		matchList.add(makeMatch( nxtPt, nxtOff,  eps,  1f ));
+		matchList.add(makeMatch( curPt, curOff, -eps, -1f ));
+		addTriangle(matchList);
+		
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( curPt, curOff, -eps, -1f ));
+		matchList.add(makeMatch( curPt, curOff,  eps,  1f ));
+		matchList.add(makeMatch( nxtPt, nxtOff,  eps,  1f ));
+		addTriangle(matchList);
+		
+		// +
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( nxtPt, nxtOff,  eps,  1f ));
+		matchList.add(makeMatch( curPt, curOff,  eps,  1f ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 2*eps,  1f+eps ));
+		addTriangle(matchList);
+		
+		matchList = new ArrayList<PointMatch>(3);
+		matchList.add(makeMatch( curPt, curOff, 2*eps,  1f+eps ));
+		matchList.add(makeMatch( curPt, curOff,  eps,   1f     ));
+		matchList.add(makeMatch( nxtPt, nxtOff, 2*eps,  1f+eps ));
+		addTriangle(matchList);
 		
 		
 	}
 	
-	public PointMatch makeMatch( float[] pt, float[] off, float amt ){
+	public void add_Experimental( float[] curPt, float[] curOff, float[] nxtPt, float[] nxtOff ){
+		
+		ArrayList<PointMatch> matchList = null;
+		double magC = ArrayUtil.sumSquares( curOff );
+		double magN = ArrayUtil.sumSquares( nxtOff );
+		float epsMulC = (float)( eps / Math.sqrt( magC )); 
+		
+		for ( int i = -1; i <=1; i +=2 ){
+			
+			matchList = new ArrayList<PointMatch>(3);
+			matchList.add(makeMatch( curPt, curOff, 0f,       0f          ));
+			matchList.add(makeMatch( curPt, curOff, 0f,  i * 1f, i * eps ));
+			matchList.add(makeMatch( nxtPt, nxtOff, i * eps,  i * 1f, eps ));
+			addTriangle(matchList);
+			
+			matchList = new ArrayList<PointMatch>(3);
+			matchList.add(makeMatch( curPt, curOff, i, i, eps, eps         ));
+			matchList.add(makeMatch( nxtPt, nxtOff, 0f,      0f          ));
+			matchList.add(makeMatch( nxtPt, nxtOff, i*eps,  i * 1f, eps  ));
+			addTriangle(matchList);
+			
+			matchList = new ArrayList<PointMatch>(3);
+			matchList.add(makeMatch( curPt, curOff, 0f, 0f ));
+			matchList.add(makeMatch( curPt, curOff, i*(eps),  i * (1f+eps) ));
+			matchList.add(makeMatch( nxtPt, nxtOff, i*(eps),  i * (1f+eps) ));
+			addTriangle(matchList);
+			
+		}
+	}
+
+
+	public PointMatch makeMatch( float[] pt, float[] off, float m1, float c1, float m2, float c2 ){
+		
+		float[] ptlc = ArrayUtil.clone(pt);
+		linComboInPlace( 1, ptlc, m1, off, c1 );
 		
 		float[] mtch = ArrayUtil.clone(pt);
-		linComboInPlace( 1, pt, amt, off );
+		linComboInPlace( 1, mtch, m2, off, c2 );
 		
 		return new PointMatch(
-				new Point( pt ),
-				new Point( mtch )
+				new Point( ptlc ),
+				new Point( ptlc, mtch )
+				);
+	}
+	
+	public PointMatch makeMatch( float[] pt, float[] off, float amt0, float amt1, float eps ){
+		
+		float[] ptlc = ArrayUtil.clone(pt);
+		linComboInPlace( 1, ptlc, amt0, off );
+		
+		float[] mtch = ArrayUtil.clone(pt);
+		linComboInPlace( 1, mtch, amt1, off, eps );
+		
+		return new PointMatch(
+				new Point( ptlc ),
+				new Point( ptlc, mtch )
 				);
 	}
 
+	public PointMatch makeMatch( float[] pt, float[] off, float amt0, float amt1 ){
+		
+		float[] ptlc = ArrayUtil.clone(pt);
+		linComboInPlace( 1, ptlc, amt0, off );
+		
+		float[] mtch = ArrayUtil.clone(pt);
+		linComboInPlace( 1, mtch, amt1, off );
+		
+		return new PointMatch(
+				new Point( ptlc ),
+				new Point( ptlc, mtch )
+				);
+	}
+
+	/**
+	 * returns out = a*v1 = b*v2
+	 * @param a
+	 * @param v1
+	 * @param b
+	 * @param v2
+	 */
+	private static float[] linCombo( float a, float[] v1, float b, float[] v2 ){
+		int N = v1.length;
+		float[] out = v1.clone();
+		linComboInPlace(a, out, b, v2);
+		return out;
+	}
+	
 	/**
 	 * sets v1 = a*v1 = b*v2
 	 * @param a
@@ -131,6 +410,26 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 		}
 	}
 	
+	private static float[] linCombo( float a, float[] v1, float b, float[] v2, float c ){
+		float[] out = v1.clone();
+		linComboInPlace( a, out, b, v2, c);
+		return out;
+	}
+	
+	/**
+	 * sets v1 = a*v1 = b*v2 + c
+	 * @param a
+	 * @param v1
+	 * @param b
+	 * @param v2
+	 */
+	private static void linComboInPlace( float a, float[] v1, float b, float[] v2, float c ){
+		int N = v1.length;
+		for( int i = 0; i < N; i++ ){
+			v1[i] = a * v1[i] + b * v2[i] + c;
+		}
+	}
+	
 	/**
 	 * Add a triangle defined by 3 PointMatches that defines an
 	 * AffineTransform2D.
@@ -139,7 +438,7 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 	 *            3 PointMatches (will not be copied, so do not reuse this
 	 *            list!)
 	 */
-	public void addTriangle( final ArrayList< PointMatch > t )
+	public void addTriangle( final ArrayList< PointMatch > t , boolean inCrack )
 	{
 		final AffineModel2D m = new AffineModel2D();
 		try
@@ -152,46 +451,262 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 		
 		for ( final PointMatch pm : t )
 		{
-			if ( !va.containsKey( pm ) )
+			if ( !va.containsKey( pm ) ){
 				va.put( pm, new ArrayList< AffineModel2D >() );
+			}
 			va.get( pm ).add( m );
 		}
+		
+		ac.put( m, inCrack );
 	}	
 	
-	@Override
+	public void addTriangle( final ArrayList< PointMatch > t ){
+		addTriangle( t, false );
+	}
+
 	public float[] apply(float[] location) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	@Override
-	public void applyInPlace(float[] location) {
-		// TODO Auto-generated method stub
+		assert location.length == 2 : "2d transform meshs can be applied to 2d points only.";
 		
+		final float[] transformed = location.clone();
+		applyInPlace( transformed );
+		return transformed;
 	}
-	@Override
+
+	public void applyInPlace(float[] location) {
+		assert location.length == 2 : "2d transform meshs can be applied to 2d points only.";
+		
+		final Set< AffineModel2D > s = av.keySet();
+		for ( final AffineModel2D ai : s )
+		{
+			final ArrayList< PointMatch > pm = av.get( ai );
+			if ( TransformMesh.isInSourcePolygon( pm, location ) )
+			{
+				logger.info(" in polygon: ");
+				ai.applyInPlace( location );
+				return;
+			}
+		}
+		// else return the identity 
+	}
+
 	public float[] applyInverse(float[] point)
 			throws NoninvertibleModelException {
-		// TODO Auto-generated method stub
-		return null;
+		assert point.length == 2 : "2d transform meshs can be applied to 2d points only.";
+		
+		final float[] transformed = point.clone();
+		applyInverseInPlace( transformed );
+		return transformed;
 	}
-	@Override
+
 	public void applyInverseInPlace(float[] point)
 			throws NoninvertibleModelException {
-		// TODO Auto-generated method stub
+		assert point.length == 2 : "2d transform meshs can be applied to 2d points only.";
 		
+		final Set< AffineModel2D > s = av.keySet();
+		for ( final AffineModel2D ai : s )
+		{
+			final ArrayList< PointMatch > pm = av.get( ai );
+			if ( TransformMesh.isInConvexTargetPolygon( pm, point ) )
+			{
+				ai.applyInverseInPlace( point );
+				return;
+			}
+		}
+//		throw new NoninvertibleModelException( "Noninvertible location ( " + point[ 0 ] + ", " + point[ 1 ] + " )" );
 	}
-	@Override
+
 	public InvertibleCoordinateTransform createInverse() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 	
+	public String toString(){
+		String out = "CrackTransformMesh with:\n";
+		Set<Entry<AffineModel2D, ArrayList<PointMatch>>> triangles = av.entrySet();
+		out += triangles.size() + " triangles\n";
+		Iterator<Entry<AffineModel2D, ArrayList<PointMatch>>> triangleIt = triangles.iterator();
+		
+		while( triangleIt.hasNext() )
+		{
+			Entry<AffineModel2D, ArrayList<PointMatch>> ent = triangleIt.next();
+			out += 	    "  " + ArrayUtil.printArray(ent.getValue().get(0).getP1().getL())
+					+ " -> " + ArrayUtil.printArray(ent.getValue().get(0).getP2().getW()) + "\n";
+			out += 	    "  " + ArrayUtil.printArray(ent.getValue().get(1).getP1().getL())
+					+ " -> " + ArrayUtil.printArray(ent.getValue().get(1).getP2().getW()) + "\n";
+			out += 	    "  " + ArrayUtil.printArray(ent.getValue().get(2).getP1().getL())
+					+ " -> " + ArrayUtil.printArray(ent.getValue().get(2).getP2().getW()) + "\n";
+			out += " *** \n";
+		}
+		return out;
+	}
 	
-	public static void main(String[] args){
+	public static void linComboTest(){
 		float[] v1 = new float[]{ 1,2,3};
 		float[] v2 = new float[]{ 1,1,1};
 		linComboInPlace( 1f, v1, -0.5f, v2);
 		System.out.println( " " + ArrayUtil.printArray( v1 ));
+	}
+	
+	
+	public static void resampTest(){
+//		String fn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1.tif";
+//		Img<FloatType> im = ImagePlusAdapter.convertFloat( IJ.openImage(fn) );
+		
+		String fnOut = "/Users/bogovicj/Documents/projects/crackSim/grad1/grad_meshCrack.tif";
+		
+		int[] sz = new int[]{ 200, 200 };
+		Img<FloatType> im = ImgOps.createGradientImgY( sz, new FloatType());
+		
+		ImageProcessor ipin = new FloatProcessor( sz[0], sz[1]);
+		ImageProcessor ipout = new FloatProcessor( sz[0], sz[1]);
+		try {
+			ImgOps.copyToImageProcessor2dFloat(im, ipin);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+//		float[][] pts = new float[][]{ {100,100},  {105,100}, {145,100}, {150,100}};
+//		float[][] off = new float[][]{ {0f,0.01f}, {0f,10f},  {0f,11f},  {0f,0.01f}};
+		
+//		float[][] pts = new float[][]{ {100,100},  {125,100}, {150,100}};
+//		float[][] off = new float[][]{ {0f,0.01f}, {0f,10f},  {0f,0.01f}};
+		
+		float[][] pts = new float[][]{ {100,100}, {150,100}};
+		float[][] off = new float[][]{ {0f,10f},  {0f,10f}};
+		
+		CrackTransformMesh crackMesh = new CrackTransformMesh( 256, 256, 10f, 10f );
+		crackMesh.fromCrackParam( pts , off );
+		
+//		Set<Entry<AffineModel2D, Boolean>> ents = crackMesh.getAC().entrySet();
+//		Iterator<Entry<AffineModel2D, Boolean>> entIt = ents.iterator();
+//		while ( entIt.hasNext() ){
+//			Entry<AffineModel2D, Boolean> e = entIt.next();
+//			if(e.getValue().booleanValue()){
+//				System.out.println(" an xfm in a crack! ");
+//			}else{
+//				System.out.println(" non-crack xfm ");
+//			}
+//		}
+		
+		CrackTransformMeshMapping<CrackTransformMesh> map 
+			= new CrackTransformMeshMapping<CrackTransformMesh>( crackMesh );
+		
+		map.mapInterpolated( ipin, ipout, 1 );		
+//		ImagePlus impout = new ImagePlus( "hi", ipout );
+//		IJ.save( impout, fnOut);
+		
+	}
+	
+	public static void mapTest() throws NoninvertibleModelException{
+		float[][] pts = new float[][]{ {100,100}, {150,100}};
+		float[][] off = new float[][]{ {0f,10f}, {0f,10f}};
+		
+		CrackTransformMesh crackMesh = new CrackTransformMesh( 256, 256, 10f, 10f );
+		crackMesh.fromCrackParam( pts , off );
+		
+		System.out.println( "" + crackMesh );
+		
+		CrackTransformMeshMapping<CrackTransformMesh> map 
+			= new CrackTransformMeshMapping<CrackTransformMesh>( crackMesh );
+	
+		float[] pt = new float[]{125f, 105f}; 
+//		System.out.println(" mapped " + ArrayUtil.printArray(pt) + " to " +
+//				 ArrayUtil.printArray(crackMesh.apply(pt)) );
+//		
+//		pt = new float[]{50f, 50f}; 
+//		System.out.println(" mapped " + ArrayUtil.printArray(pt) + " to " +
+//				 ArrayUtil.printArray(crackMesh.apply(pt)) );
+		
+		
+		System.out.println( "\n*\n*\n" );
+		for ( float y = 85f; y<115f; y++ ){
+			pt = new float[]{125f, y};
+			float[] ptm = crackMesh.apply(pt);
+			System.out.println(" map" + pt[1] + " to " + ptm[1] );
+		}
+		
+	}
+	public static void debugTriangulation(){
+		float[][] pts = new float[][]{ {100,100}, {150,100}};
+		float[][] off = new float[][]{ {0f,10f}, {0f,10f}};
+		
+		CrackTransformMesh crackMesh = new CrackTransformMesh( 256, 256, 10f, 10f );
+		crackMesh.fromCrackParam( pts , off );
+		
+		System.out.println( "" + crackMesh );
+		
+		Set<Entry<AffineModel2D, ArrayList<PointMatch>>> entries = crackMesh.getAV().entrySet();
+		Iterator<Entry<AffineModel2D, ArrayList<PointMatch>>> it = entries.iterator();
+		while ( it.hasNext() ){
+			ArrayList<PointMatch> pm = it.next().getValue();
+			
+			float[] a = pm.get( 0 ).getP2().getW();
+			float ax = a[ 0 ];
+			float ay = a[ 1 ];
+			float[] b = pm.get( 1 ).getP2().getW();
+			float bx = b[ 0 ];
+			float by = b[ 1 ];
+			float[] c = pm.get( 2 ).getP2().getW();
+			float cx = c[ 0 ];
+			float cy = c[ 1 ];
+			
+			System.out.println(" "  +
+					""+ax + "," + ay + "," + bx + ","+by+"," + cx+","+cy +"");
+		}
+	}
+	
+
+	
+	public static void testFaceDistance(){
+		
+		int[]   sz = new int[]  { 15, 15 };
+		float[] pt = new float[]{ 12, 12 };
+		float[] offset = ArrayUtil.normalizeLength( new float[]{ 0.4f, 0.7f} );
+		
+//		float[][] faceVecs = createVectorsToFaces( pt, sz);
+//		System.out.println(" " + ArrayUtil.printArray(faceVecs));
+//		System.out.println(" \n*\n*\n " );
+		
+		float[] Xpt = intersection2d( pt, offset, sz, false );
+		System.out.println("\n pt:     " + ArrayUtil.printArray( pt ));
+		System.out.println(" offset: " + ArrayUtil.printArray( offset ));
+		System.out.println(" Xpt " + ArrayUtil.printArray(Xpt));
+		
+		
+		offset = ArrayUtil.normalizeLength( new float[]{ 0.7f, 0.4f} );
+		Xpt = intersection2d( pt, offset, sz, false );
+		System.out.println("\n pt:     " + ArrayUtil.printArray( pt ));
+		System.out.println(" offset: " + ArrayUtil.printArray( offset ));
+		System.out.println(" Xpt " + ArrayUtil.printArray(Xpt));
+		System.out.println(""); 
+		
+	}
+	
+	public static void ptListTest(){
+		float[] pt = new float[]{100,100};
+		float[] offset = new float[]{0f, 1f};
+		int[] sz = new int[]{ 256, 256};
+		float[][] ptList = xfmPtList( pt, offset, sz, 0.1f );
+		
+		System.out.println( ArrayUtil.printArray( ptList ));
+	}
+	
+	public static void main(String[] args){
+
+		ptListTest();
+		
+//		debugTriangulation();
+//		testFaceDistance();
+//		resampTest();
+		
+//		try {
+//			mapTest();
+//		} catch (NoninvertibleModelException e) {
+//			e.printStackTrace();
+//		}
+	
+		System.out.println("Finished");
+		System.exit(0);
 	}
 	
 
