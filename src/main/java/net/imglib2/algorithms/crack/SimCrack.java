@@ -2,22 +2,31 @@ package net.imglib2.algorithms.crack;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import mpicbg.ij.ThinPlateSplineMapping;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
+import mpicbg.models.TransformMesh;
 import net.imglib2.Cursor;
+import net.imglib2.IterableInterval;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.exception.ImgLibException;
 import net.imglib2.img.Img;
+import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.NumericType;
+import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.ByteType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.ImgOps;
+import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
 import org.apache.log4j.LogManager;
@@ -39,8 +48,10 @@ public class SimCrack {
 	ThinPlateR2LogRSplineKernelTransformFloatSep tps;
 	
 	int nCrackPts;
-	double[][] crackCtrlPts;
-	double[][] crackCtrlOffsets;
+	float[][] 	crackCtrlPts;
+	float[][] 	crackCtrlOffsets;
+	
+	CrackTransformMesh crackMesh;
 	
 	private int edgePtNumSamples = 21;
 	double eps 			 = 0.1;
@@ -54,9 +65,11 @@ public class SimCrack {
 		setDims(dims);
 	}
 	
-	public SimCrack(int[] dims, double[][] linePoints, double[][] offsets )
+	public SimCrack(int[] dims, float[][] linePoints, float[][] offsets )
 	{
 		setDims(dims);
+		this.crackCtrlPts = linePoints;
+		this.crackCtrlOffsets = offsets;
 	}
 	
 	public void setDims(int[] dims){
@@ -136,7 +149,46 @@ public class SimCrack {
 		}
 
 	}
-	public void buildXfm2d()
+	
+	public void buildXfmMesh()
+	{
+		crackMesh = new CrackTransformMesh( dims );
+		crackMesh.fromCrackParam( crackCtrlPts, crackCtrlOffsets );
+		
+	}
+	
+	public <T extends RealType<T>> Img<T> mapMesh( Img<T> src ){
+		int maxCoordOffset = -1;
+		
+		for( int i=0; i<crackCtrlOffsets.length; i++){
+			for( int j=0; j<crackCtrlOffsets[0].length; j++){
+				if ( crackCtrlOffsets[i][j] > maxCoordOffset ){
+					maxCoordOffset = (int) Math.ceil( crackCtrlOffsets[i][j] );
+				}
+			}
+		}
+		maxCoordOffset += 2; // add a little extra for good measure
+		
+		int[] szPad = new int[ src.numDimensions() ];
+		for( int d=0; d<src.numDimensions(); d++){
+			szPad[d] = (int)src.dimension(d) + 2*maxCoordOffset;
+		}
+		
+		Img<T> dest = src.factory().create( szPad, src.firstElement() );
+		IterableInterval<T> view = 
+				Views.flatIterable(
+					Views.offset( dest, maxCoordOffset, maxCoordOffset )
+				);
+		
+		CrackTransformMeshMapping<CrackTransformMesh> map 
+			= new CrackTransformMeshMapping<CrackTransformMesh>( crackMesh );
+		
+		map.mapInterpolated( src, view );
+		
+		return dest;
+	}
+	
+	public void buildXfm2dSpline()
 	{
 		int Nface = numFacePts2d( edgePtNumSamples );
 		int N = Nface + ( 4 * nCrackPts );
@@ -219,32 +271,7 @@ public class SimCrack {
 
       return N;
    }
-   
-	//public static double[][] facePoints( int[] dims, int samplesPerFace )
-	//{
-	//	int ndims = dims.length;
-	//	int nfaces = 2*ndims;
-	//	int k = ndims-1;
-	//	int totSamples = samplesPerFace;
-	//	while( k > 1){
-	//		totSamples *= samplesPerFace;
-	//		k--;
-	//	}
-	//	totSamples *= nfaces;
-	//	System.out.println("nEdgeSamples : " + totSamples);
-	//	
-	//	double[][] res = new double[totSamples][ndims]; 
-	//	
-	//	int[] pos = new int[ndims];
-	//	
-	//	for (int d=0; d<ndims; d++){
-	//		// vary d and fix the other dimensions
-	//		
-	//		
-	//	}
-	//	
-	//	return res;
-	//}
+
 	
 	/**
 	 * 
@@ -522,10 +549,10 @@ public class SimCrack {
 	 * @param fixedY
 	 * @param crackHalfWidth 
 	 */
-	public void genSimpleCrackX2d( int nx, int startX, int crackLength, int step, int fixedY, double crackHalfWidth )
+	public void genSimpleCrackX2d( int nx, int startX, int crackLength, int step, int fixedY, float crackHalfWidth )
 	{
-		crackCtrlPts 	 = new double[2][crackLength];
-		crackCtrlOffsets = new double[2][crackLength];
+		crackCtrlPts 	 = new float[2][crackLength];
+		crackCtrlOffsets = new float[2][crackLength];
 		nCrackPts = 0;
 
 		// first point should have zero offset
@@ -558,10 +585,10 @@ public class SimCrack {
 	 * @param N
 	 * @param crackWidth
 	 */
-	public void genSimpleCrackXZ3d( int nx, int nz, int startX, int crackLength, int fixedY, double crackHalfWidth )
+	public void genSimpleCrackXZ3d( int nx, int nz, int startX, int crackLength, int fixedY, float crackHalfWidth )
 	{
-		crackCtrlPts 	 = new double[3][crackLength*nz];
-		crackCtrlOffsets = new double[3][crackLength*nz];
+		crackCtrlPts 	 = new float[3][crackLength*nz];
+		crackCtrlOffsets = new float[3][crackLength*nz];
 		nCrackPts = 0;
 
 		// first point should have zero offset 
@@ -598,7 +625,7 @@ public class SimCrack {
 		int crackLength = 5;
 		int fixedY 		= 8;
 		
-		double crackHalfWidth = 2.0;
+		float crackHalfWidth = 2.0f;
 		sc.genSimpleCrackXZ3d(dims[0], dims[2], startX, crackLength, fixedY, crackHalfWidth);
 		sc.buildXfm3d();
 		
@@ -669,7 +696,7 @@ public class SimCrack {
 //		int[] dims = new int[]{	(int)img.dimension(0),
 //							   	(int)img.dimension(1)};
 		
-		int[] sz = new int[]{32,32};
+		int[] sz = new int[]{32,32}	;
 		double[] w = new double[]{ 0.50, 0.50 };
 		Img<FloatType> img = ImgOps.createGradientImg(sz, w, new FloatType());
 		Img<FloatType> dest = img.factory().create( img, img.firstElement());
@@ -691,10 +718,10 @@ public class SimCrack {
 		int crackLength = sz[0] - 15;
 		int step        = 10;
 		int fixedY 		= sz[1]/2;
-		double crackHalfWidth = 3.0;
+		float crackHalfWidth = 3.0f;
 		
 		sc.genSimpleCrackX2d( sz[0], startX, crackLength, step, fixedY, crackHalfWidth );
-		sc.buildXfm2d();
+		sc.buildXfm2dSpline();
 		
 		
 //		ImagePlus dest = new ImagePlus("dest", ip.getStack());
@@ -707,6 +734,27 @@ public class SimCrack {
 		ImgOps.writeFloat(img, fn);
 		ImgOps.writeFloat(dest, basename + "grad_crack.tif");
 		
+	}
+	
+	public static void test2dMesh(){
+	
+		String fnIn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1.tif";
+		Img<FloatType> im = ImageJFunctions.convertFloat( IJ.openImage(fnIn));
+		int[] sz = new int[]{ (int)im.dimension(0), (int)im.dimension(1) };
+		String fnOut = "/Users/bogovicj/Documents/projects/crackSim/bee/bee_meshCrack_push.tif";
+		
+//		int[] sz = new int[]{ 200, 200 };
+//		Img<FloatType> im = ImgOps.createGradientImgY( sz, new FloatType());
+//		String fnOut = "/Users/bogovicj/Documents/projects/crackSim/grad1/grad_meshCrack_push.tif";
+
+		
+		float[][] pts = new float[][]{ {100,100}, {115,100}, {135,100}, {150,100} };
+		float[][] off = new float[][]{ {0f,0.2f}, {0f,6f} ,   {0f,5f}, {0f,0.2f}  };
+	
+		SimCrack sc = new SimCrack( sz, pts, off );
+		sc.buildXfmMesh();
+		Img<FloatType> out = sc.mapMesh( im );
+		ImgOps.writeFloat( out, fnOut );
 	}
 	
 	final static public <T extends NumericType<T>> void mapInterval(
@@ -726,7 +774,6 @@ public class SimCrack {
 			tc.get().set( sara.get() );
 			
 		}
-				
 	}
 	
 	/**
@@ -736,9 +783,9 @@ public class SimCrack {
 		System.out.println("starting\n");
 
 //		test3d();
-		test2d();
+//		test2d();
 		
-		
+		test2dMesh();
 		
 		System.out.println("\nfinished");
 	}

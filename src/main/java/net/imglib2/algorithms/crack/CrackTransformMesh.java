@@ -39,10 +39,6 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 	public float getNx(){ return nx; }
 	public float getNy(){ return ny; }
 	
-	final protected float width, height;
-	public float getWidth(){ return width; }
-	public float getHeight(){ return height; }
-	
 	final protected HashMap< AffineModel2D, ArrayList< PointMatch > > av = new HashMap< AffineModel2D, ArrayList< PointMatch > >();
 	public HashMap< AffineModel2D, ArrayList< PointMatch > > getAV(){ return av; }
 	final protected HashMap< PointMatch, ArrayList< AffineModel2D > > va = new HashMap< PointMatch, ArrayList< AffineModel2D > >();
@@ -76,13 +72,16 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 
 	final static Logger logger = LogManager.getLogger( CrackTransformMesh.class.getName() );
 
-	public CrackTransformMesh( int nx, int ny, float width, float height){
+	public CrackTransformMesh( int nx, int ny ){
 		this.nx = nx;
 		this.ny = ny;
 		sz = new int[]{ nx, ny };
 		
-		this.width  = width;
-		this.height = height;
+	}
+	public CrackTransformMesh( int[] sz ){
+		this.sz = sz;
+		this.nx = sz[0];
+		this.ny = sz[1];
 	}
 	
 	public void reset(){
@@ -181,8 +180,33 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 		vecs[3][1] = sz[1] - pt[1];
 		return vecs;
 	}
-	
+
 	public static float[][] xfmPtList( float[] pt, float[] offset, int[] sz, float eps )
+	{
+		float[][] ptList = new float[12][];
+		
+		ptList[0] = intersection2d( pt, offset, sz, true );
+		ptList[1] = linCombo( 1f, ptList[0], -1f-eps, offset );
+		
+		ptList[2] = linCombo( 1f, pt,  -2*eps, offset );
+		ptList[3] = linCombo( 1f, pt, -1f-eps, offset );
+		
+		ptList[4] = linCombo( 1f, pt, -eps, offset );
+		ptList[5] = linCombo( 1f, pt,  -1f, offset );
+		
+		ptList[6] = linCombo( 1f, pt, eps, offset );
+		ptList[7] = linCombo( 1f, pt,  1f, offset );
+		
+		ptList[8] = linCombo( 1f, pt,  2*eps, offset );
+		ptList[9] = linCombo( 1f, pt, 1f+eps, offset );
+		
+		ptList[10] = intersection2d( pt, offset, sz, false );
+		ptList[11] = linCombo( 1f, ptList[10], 1f+eps, offset );
+		
+		return ptList;
+	}
+	
+	public static float[][] xfmPtListDeform( float[] pt, float[] offset, int[] sz, float eps )
 	{
 		float[][] ptList = new float[12][];
 		
@@ -563,7 +587,7 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 //		String fn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1.tif";
 //		Img<FloatType> im = ImagePlusAdapter.convertFloat( IJ.openImage(fn) );
 		
-		String fnOut = "/Users/bogovicj/Documents/projects/crackSim/grad1/grad_meshCrack.tif";
+		String fnOut = "/Users/bogovicj/Documents/projects/crackSim/grad1/grad_meshCrack_push.tif";
 		
 		int[] sz = new int[]{ 200, 200 };
 		Img<FloatType> im = ImgOps.createGradientImgY( sz, new FloatType());
@@ -582,10 +606,10 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 //		float[][] pts = new float[][]{ {100,100},  {125,100}, {150,100}};
 //		float[][] off = new float[][]{ {0f,0.01f}, {0f,10f},  {0f,0.01f}};
 		
-		float[][] pts = new float[][]{ {100,100}, {105,100}, {145,100}, {150,100} };
-		float[][] off = new float[][]{ {0f,0.5f}, {0f,10f} ,   {0f,8f}, {0f,0.5f}  };
+		float[][] pts = new float[][]{ {100,100}, {115,100}, {135,100}, {150,100} };
+		float[][] off = new float[][]{ {0f,0.2f}, {0f,6f} ,   {0f,5f}, {0f,0.2f}  };
 		
-		CrackTransformMesh crackMesh = new CrackTransformMesh( 200, 200, 10f, 10f );
+		CrackTransformMesh crackMesh = new CrackTransformMesh( 200, 200 );
 		crackMesh.fromCrackParam( pts , off );
 		
 //		System.out.println( " crack mesh :\n" + crackMesh.toString() );
@@ -614,7 +638,7 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 		float[][] pts = new float[][]{ {100,100}, {150,100}};
 		float[][] off = new float[][]{ {0f,10f}, {0f,10f}};
 		
-		CrackTransformMesh crackMesh = new CrackTransformMesh( 256, 256, 10f, 10f );
+		CrackTransformMesh crackMesh = new CrackTransformMesh( 256, 256 );
 		crackMesh.fromCrackParam( pts , off );
 		
 		System.out.println( "" + crackMesh );
@@ -643,7 +667,7 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 		float[][] pts = new float[][]{ {100,100}, {150,100}};
 		float[][] off = new float[][]{ {0f,10f},  {0f,10f}};
 		
-		CrackTransformMesh crackMesh = new CrackTransformMesh( 200, 200, 10f, 10f );
+		CrackTransformMesh crackMesh = new CrackTransformMesh( 200, 200 );
 		crackMesh.fromCrackParam( pts , off );
 		
 		System.out.println( "" + crackMesh );

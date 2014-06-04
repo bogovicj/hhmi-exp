@@ -8,10 +8,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import net.imglib2.Cursor;
+import net.imglib2.IterableInterval;
+import net.imglib2.RandomAccessible;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.RealRandomAccess;
+import net.imglib2.RealRandomAccessible;
+import net.imglib2.interpolation.InterpolatorFactory;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.type.numeric.NumericType;
+import net.imglib2.view.Views;
 import mpicbg.ij.InvertibleTransformMapping;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.PointMatch;
-import mpicbg.models.TransformMesh;
 import mpicbg.util.Util;
 
 public class CrackTransformMeshMapping< T extends CrackTransformMesh > extends InvertibleTransformMapping< T > 
@@ -284,7 +293,7 @@ public class CrackTransformMeshMapping< T extends CrackTransformMesh > extends I
 			for ( int x = 0; x <= w; ++x )
 			{
 				
-				boolean hitThis = false;
+				//boolean hitThis = false;
 				boolean inTriangle = false;
 				for( AffineModel2D ai : aiList ){
 					
@@ -328,10 +337,10 @@ public class CrackTransformMeshMapping< T extends CrackTransformMesh > extends I
 						
 						if( isInCrack ){
 							target.putPixel( x, y, 0 );
-							hitThis = true;
+							//hitThis = true;
 						}else{
 							target.putPixel( x, y, source.getPixelInterpolated( t[ 0 ], t[ 1 ] ) );
-							hitThis = true;
+							//hitThis = true;
 						}
 						
 						if( x == 109 && y ==95){
@@ -346,6 +355,100 @@ public class CrackTransformMeshMapping< T extends CrackTransformMesh > extends I
 					target.putPixel( x, y, source.getPixel( x, y ) );
 				}
 			}
+		}
+	}
+	
+//	InterpolatorFactory<T,RandomAccessible<T>
+	final static protected <T extends NumericType<T>> void mapTriangleInterpolated(
+			final CrackTransformMesh m, 
+			final Collection<AffineModel2D> aiList,
+			final RandomAccessibleInterval<T> source,
+			final IterableInterval<T> target )
+	{
+		NLinearInterpolatorFactory<T> interp = new NLinearInterpolatorFactory<T>(); 
+		mapTriangleInterpolated(
+				m, aiList, source,target, interp );
+	}
+	
+	final static protected <T extends NumericType<T>> void mapTriangleInterpolated(
+			final CrackTransformMesh m, 
+			final Collection<AffineModel2D> aiList,
+			final RandomAccessibleInterval<T> source,
+			final IterableInterval<T> target,
+			final InterpolatorFactory<T,RandomAccessible<T>> interp)
+	{
+		Cursor<T> curs = target.cursor();
+		
+		RealRandomAccessible<T> srcRa = Views.interpolate( 
+					Views.extendZero( source ), 
+					interp );
+		RealRandomAccess<T> ra = srcRa.realRandomAccess();
+		
+
+		final float[] t = new float[ 2 ];
+		while( curs.hasNext() )
+		{
+			curs.fwd();
+			curs.localize( t );
+			
+			float x = t[0];
+			float y = t[1];
+			
+			//boolean hitThis = false;
+			boolean inTriangle = false;
+			for( AffineModel2D ai : aiList ){
+
+				ArrayList< PointMatch > pm = m.getAV().get( ai );
+
+				float[] a = pm.get( 0 ).getP2().getW();
+				float ax = a[ 0 ];
+				float ay = a[ 1 ];
+				float[] b = pm.get( 1 ).getP2().getW();
+				float bx = b[ 0 ];
+				float by = b[ 1 ];
+				float[] c = pm.get( 2 ).getP2().getW();
+				float cx = c[ 0 ];
+				float cy = c[ 1 ];
+
+				if ( isInTriangle( ax, ay, bx, by, cx, cy, x, y ) )
+				{
+
+					boolean isInCrack = m.getAC().get(ai).booleanValue();
+
+					try
+					{
+						ai.applyInverseInPlace( t );
+					}
+					catch ( Exception e )
+					{
+						//e.printStackTrace( System.err );
+						System.out.println(" error at " + x + " " + y );
+						continue;
+					}
+
+					if( isInCrack ){
+						curs.get().setZero();
+						//hitThis = true;
+					}else{
+						ra.setPosition( t );
+						curs.get().set( ra.get() );
+						//hitThis = true;
+					}
+
+					inTriangle = true;
+				}
+			}
+
+			if( !inTriangle ){
+				try{
+					ra.setPosition( t );
+					curs.get().set( ra.get() );
+				}catch( Exception e){
+					System.out.println(" error at " + x + " " + y);
+					continue;
+				}
+			}
+
 		}
 	}
 	
@@ -414,6 +517,21 @@ public class CrackTransformMeshMapping< T extends CrackTransformMesh > extends I
 		mapInterpolated( source, target, 1);
 	}
 	
+	final public <F extends NumericType<F>> void mapInterpolated(
+			final RandomAccessibleInterval<F> source,
+			final IterableInterval<F> target )
+	{
+		final Set< AffineModel2D > s = transform.getAV().keySet();
+		mapTriangleInterpolated( transform, s, source, target );
+	}
+	final public <F extends NumericType<F>> void mapInterpolated(
+			final RandomAccessibleInterval<F> source,
+			final IterableInterval<F> target,
+			final InterpolatorFactory<F,RandomAccessible<F>> interp)
+	{
+		final Set< AffineModel2D > s = transform.getAV().keySet();
+		mapTriangleInterpolated( transform, s, source, target, interp );
+	}
 	
 	/**
 	 * 
