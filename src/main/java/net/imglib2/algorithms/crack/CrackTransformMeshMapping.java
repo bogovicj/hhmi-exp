@@ -304,10 +304,10 @@ public class CrackTransformMeshMapping< T extends CrackTransformMesh > extends I
 					{
 						
 						boolean isInCrack = m.getAC().get(ai).booleanValue();
-						if( isInCrack ){
-							System.out.println(" crack-tastic\n"  +
-							"("+ax + "," + ay + ")  (" + bx + ","+by+")  (" + cx+","+cy +")");
-						}
+//						if( isInCrack ){
+//							System.out.println(" crack-tastic\n"  +
+//							"("+ax + "," + ay + ")  (" + bx + ","+by+")  (" + cx+","+cy +")");
+//						}
 						
 						t[ 0 ] = x;
 						t[ 1 ] = y;
