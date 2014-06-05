@@ -924,12 +924,7 @@ public class ArrayUtil {
 		for(int i=0; i<in.length; i++) {	out[i]=in[i]/sum; 	}
 		return out;
 	}
-	public static final float[] normalizeLength(float[] in){
-		float[] out = new float[in.length];
-		float sum = (float)Math.sqrt(sumSquares(in));
-		for(int i=0; i<in.length; i++) {	out[i]=in[i]/sum; 	}
-		return out;
-	}
+
 	public static final void normalizeComponentsOverwrite(float[][][][] in){
 		int nx=in.length;
 		int ny=in[0].length;
@@ -965,11 +960,20 @@ public class ArrayUtil {
 		for(int i=0; i<in.length; i++) {	out[i]=in[i]/sum; 	}
 		return out;
 	}
+	public static final float[] normalizeLength(float[] in){
+		float[] out = new float[in.length];
+		float sum = (float)Math.sqrt(sumSquares(in));
+		for(int i=0; i<in.length; i++) {	out[i]=in[i]/sum; 	}
+		return out;
+	}
 	public static final void normalizeLengthInPlace(double[] in){
 		double sum = sumSquares(in);
 		for(int i=0; i<in.length; i++) {	in[i] = in[i]/sum; 	}
 	}
-	
+	public static final void normalizeLengthInPlace(float[] in){
+		float sum = sumSquares(in);
+		for(int i=0; i<in.length; i++) {	in[i] = in[i]/sum; 	}
+	}
 	public static final float[] normalizeTo(float[] in, float normsum){
 		float sum = 0;
 		float[] out = new float[in.length];
