@@ -10,6 +10,8 @@ import java.util.Arrays;
 import net.imglib2.RandomAccess;
 import net.imglib2.algorithm.edge.Edgel;
 import net.imglib2.algorithms.crack.CrackCorrection;
+import net.imglib2.algorithms.edge.EdgelTools;
+import net.imglib2.algorithms.patch.PatchTools;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgFactory;
@@ -19,7 +21,7 @@ import net.imglib2.realtransform.RealTransformRandomAccessible;
 import net.imglib2.realtransform.RealTransformRandomAccessible.RealTransformRandomAccess;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.ImgUtil;
+import net.imglib2.util.ImgOps;
 import edu.jhu.ece.iacl.utility.ArrayUtil;
 
 public class EdgelSamplingTest {
@@ -28,18 +30,20 @@ public class EdgelSamplingTest {
 	public void testEdgelView(){
 
 		// generate image with gradient in X
-		Img<FloatType> img = ImgUtil.createGradientImgX(32,32,32, new FloatType(0));
+		Img<FloatType> img = ImgOps.createGradientImgX( 
+				new int[]{32,32,32}, new FloatType());
 
 		// choose an edgel with normal in X direction
-		Edgel e = new Edgel( new float[]{12,12,12},
-									new float[]{1f,0f,0f}, 1f);
+		Edgel e = new Edgel( new double[]{12,12,12},
+									new double[]{1,0,0}, 1);
 		
 		// expect a constant value in the edgel view
 		int[] patchSize  = new int[]{5,5,3};
 
 		//RealTransformRandomAccessible<FloatType,InverseRealTransform> view 
 		RealTransformRandomAccessible<FloatType, InverseRealTransform> view =
-				CrackCorrection.edgelToView(e, img, patchSize);
+				EdgelTools.edgelToView(e, img, patchSize);
+		
 		
 		RealTransformRandomAccess vra = view.randomAccess();
 		
@@ -55,19 +59,20 @@ public class EdgelSamplingTest {
 		vra.setPosition(new int[]{1,1,0});	
 		System.out.println("val (1,1,0) : " + vra.get());
 		
-		int[] midPt = CrackCorrection.patchSizeToMidpt(patchSize);
-		AffineTransform3D xfmIn = CrackCorrection.edgelToXfm(e, midPt);
+		int[] midPt = PatchTools.patchSizeToMidpt(patchSize);
+		AffineTransform3D xfmIn = EdgelTools.edgelToXfm(e, midPt);
 		
 		
 		ArrayImgFactory<UnsignedByteType> ubfactory = new ArrayImgFactory<UnsignedByteType>();
 		
 		Img<UnsignedByteType> maskimg = ubfactory.create(img, new UnsignedByteType());
 		
-		CrackCorrection.setMask( ArrayUtil.toDouble(e.getPosition()), 
-				patchSize, xfmIn, maskimg, new UnsignedByteType(255));
+		double[] pos = new double[e.numDimensions()];
+		e.localize(pos);
+		CrackCorrection.setMask( pos, patchSize, xfmIn, maskimg, 
+								 new UnsignedByteType(255));
 		
-		ImgUtil.write(maskimg, "/groups/jain/home/bogovicj/projects/crackSegmentation/edgelValidate/toy.tif");
-		
+//		ImgUtil.write(maskimg, "/groups/jain/home/bogovicj/projects/crackSegmentation/edgelValidate/toy.tif");
 		
 //		assertEquals("hi",1,1);
 	}
