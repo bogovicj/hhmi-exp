@@ -452,6 +452,62 @@ public class CrackTransformMeshMapping< T extends CrackTransformMesh > extends I
 		}
 	}
 	
+	final static protected <T extends NumericType<T>> void mapMask(
+			final CrackTransformMesh m, 
+			final IterableInterval<T> target)
+	{
+		Cursor<T> curs = target.cursor();
+		Set<AffineModel2D> aiList = m.av.keySet();
+
+		final float[] t = new float[ 2 ];
+		while( curs.hasNext() )
+		{
+			curs.fwd();
+			curs.localize( t );
+			
+			float x = t[0];
+			float y = t[1];
+			
+			for( AffineModel2D ai : aiList ){
+
+				ArrayList< PointMatch > pm = m.getAV().get( ai );
+
+				float[] a = pm.get( 0 ).getP2().getW();
+				float ax = a[ 0 ];
+				float ay = a[ 1 ];
+				float[] b = pm.get( 1 ).getP2().getW();
+				float bx = b[ 0 ];
+				float by = b[ 1 ];
+				float[] c = pm.get( 2 ).getP2().getW();
+				float cx = c[ 0 ];
+				float cy = c[ 1 ];
+
+				if ( isInTriangle( ax, ay, bx, by, cx, cy, x, y ) )
+				{
+
+					boolean isInCrack = m.getAC().get(ai).booleanValue();
+
+					try
+					{
+						ai.applyInverseInPlace( t );
+					}
+					catch ( Exception e )
+					{
+						//e.printStackTrace( System.err );
+//						System.out.println(" error at " + x + " " + y );
+						continue;
+					}
+
+					if( isInCrack ){
+						curs.get().setOne();
+					
+					}
+				}
+			}
+		}
+	}
+	
+	
 	final public void map(
 			final ImageProcessor source,
 			final ImageProcessor target,
