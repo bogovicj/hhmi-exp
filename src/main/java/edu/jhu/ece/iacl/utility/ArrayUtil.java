@@ -967,11 +967,11 @@ public class ArrayUtil {
 		return out;
 	}
 	public static final void normalizeLengthInPlace(double[] in){
-		double sum = sumSquares(in);
+		double sum = ( Math.sqrt(sumSquares(in)) );
 		for(int i=0; i<in.length; i++) {	in[i] = in[i]/sum; 	}
 	}
 	public static final void normalizeLengthInPlace(float[] in){
-		float sum = sumSquares(in);
+		float sum = (float)( Math.sqrt(sumSquares(in)) );
 		for(int i=0; i<in.length; i++) {	in[i] = in[i]/sum; 	}
 	}
 	public static final float[] normalizeTo(float[] in, float normsum){

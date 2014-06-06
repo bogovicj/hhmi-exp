@@ -604,7 +604,7 @@ public class SimCrack {
 									float crackWidth, float stepWidth, float maxSkew )
 	{
 		int stepIdx = crackLength / 2;
-		System.out.println( "stepIdx " + stepIdx);
+//		System.out.println( "stepIdx " + stepIdx);
 		
 		int ndims = startPt.length;
 		
@@ -617,6 +617,13 @@ public class SimCrack {
 		float[] lineVec = ArrayUtil.subtract( endPt, startPt );
 		ArrayUtil.normalizeLengthInPlace(lineVec);
 		float[] lineVecPerp = SimpleLinAlg.orth2d( lineVec );
+		
+		for( int d=0; d<ndims; d++){
+			crackCtrlPts[ crackLength-1 ][ d ] += stepWidth * lineVecPerp[ d ];
+		}
+		
+//		System.out.println(" lineVecPerp:  " + ArrayUtil.printArray( lineVecPerp ));
+//		System.out.println(" lineVec    :  " + ArrayUtil.printArray( lineVec ));
 		
 		float del = 1 / ( (float)crackLength);
 		
@@ -635,8 +642,9 @@ public class SimCrack {
 			}	
 		}
 		
-		crackCtrlOffsets[ 0 ] = ArrayUtil.multiply( lineVecPerp, eps);
-		crackCtrlOffsets[ crackLength-1 ] = crackCtrlPts[ 0 ];
+		
+		crackCtrlOffsets[ 0 ] = ArrayUtil.multiply( lineVecPerp.clone(), eps);
+		crackCtrlOffsets[ crackLength-1 ] = crackCtrlOffsets[ 0 ];
 		float skewAmt = 0f;
 		
 		for( int i=1; i < (crackLength-1); i++)
@@ -648,8 +656,10 @@ public class SimCrack {
 				skewAmt = maxSkew * ( (float)i / ( stepIdx - 1 ));
 			}
 			
-			System.out.println(" i " + i + "    skewAmt: " + skewAmt );
-			
+			for( int d=0; d<ndims; d++)
+			{	
+				crackCtrlOffsets[i][d] = ( crackWidth * lineVecPerp[d] ) + ( skewAmt * lineVec[d] );
+			}
 			
 		}
 	}
@@ -872,8 +882,11 @@ public class SimCrack {
 		String fnIn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1.tif";
 		Img<FloatType> im = ImageJFunctions.convertFloat( IJ.openImage(fnIn));
 		int[] sz = new int[]{ (int)im.dimension(0), (int)im.dimension(1) };
-		String fnOut = "/Users/bogovicj/Documents/projects/crackSim/bee/bee_meshCrackRand_skew.tif";
-		String fnMaskOut = "/Users/bogovicj/Documents/projects/crackSim/bee/bee_meshCrackRand_skew_mask.tif";
+//		String fnOut = "/Users/bogovicj/Documents/projects/crackSim/bee/bee_meshCrackRand_skew.tif";
+//		String fnMaskOut = "/Users/bogovicj/Documents/projects/crackSim/bee/bee_meshCrackRand_skew_mask.tif";
+		
+		String fnOut = "/Users/bogovicj/Documents/projects/crackSim/bee/bee_meshCrackStep_skew.tif";
+		String fnMaskOut = "/Users/bogovicj/Documents/projects/crackSim/bee/bee_meshCrackStep_skew_mask.tif";
 		
 //		int[] sz = new int[]{ 200, 200 };
 //		Img<FloatType> im = ImgOps.createGradientImgY( sz, new FloatType());
@@ -894,23 +907,23 @@ public class SimCrack {
 //		float skewVar 	= 0.5f;
 //		sc.genCrack2d(startPt, endPt, crackLength, distShp, distScale, skewMn, skewVar );
 		
-		float[] startPt = new float[]{   0, 315 };
-		float[] endPt   = new float[]{ 600, 315 };
-		int crackLength =   10;
+		float[] startPt = new float[]{   0, 200 };
+		float[] endPt   = new float[]{ 600, 200 };
+		int crackLength =   24;
 		float crackWidth=   4f;
 		float stepWidth =  12f;
-		float maxSkew   =    5f;
+		float maxSkew   =   5f;
 		sc.genSemiStepCrack(startPt, endPt, crackLength, crackWidth, stepWidth, maxSkew);
 		
-//		System.out.println(" ctrlPts:\n " + ArrayUtil.printArray( sc.crackCtrlPts));
-//		System.out.println(" ctrlOffsets:\n " + ArrayUtil.printArray( sc.crackCtrlOffsets));
+		System.out.println(" ctrlPts:\n " + ArrayUtil.printArray( sc.crackCtrlPts));
+		System.out.println(" ctrlOffsets:\n " + ArrayUtil.printArray( sc.crackCtrlOffsets));
 		
-//		sc.buildXfmMesh();
-//		Img<FloatType> out = sc.mapMesh( im );
-//		ImgOps.writeFloat( out, fnOut );
-//		
-//		Img<ByteType> mask = sc.getCrackMask( new ArrayImgFactory<ByteType>(), new ByteType());
-//		ImgOps.writeByte( mask, fnMaskOut );
+		sc.buildXfmMesh();
+		Img<FloatType> out = sc.mapMesh( im );
+		ImgOps.writeFloat( out, fnOut );
+		
+		Img<ByteType> mask = sc.getCrackMask( new ArrayImgFactory<ByteType>(), new ByteType());
+		ImgOps.writeByte( mask, fnMaskOut );
 	}
 	
 	public final static <T extends NumericType<T>> void mapInterval(
