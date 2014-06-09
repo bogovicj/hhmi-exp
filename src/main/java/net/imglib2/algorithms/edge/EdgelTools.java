@@ -1,5 +1,8 @@
 package net.imglib2.algorithms.edge;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import ij.IJ;
 
 import org.apache.log4j.LogManager;
@@ -9,6 +12,7 @@ import org.ejml.simple.SimpleMatrix;
 import org.ejml.simple.SimpleSVD;
 
 import edu.jhu.ece.iacl.utility.ArrayUtil;
+
 import net.imglib2.algorithm.edge.Edgel;
 import net.imglib2.algorithm.gradient.PartialDerivative;
 import net.imglib2.algorithm.region.localneighborhood.Neighborhood;
@@ -175,6 +179,21 @@ public class EdgelTools {
 			}
 			
 		}
+	}
+
+	public static void averageGradientDirectionNaive( Collection<Edgel> edgels, double[] or )
+	{
+	    int i = 0;
+		Arrays.fill( or, 0f );
+	   	for( Edgel e : edgels )
+		{
+		   double[] grd = e.getGradient();
+			for( int d=0; d<or.length; d++){
+			   	or[d] += grd[d]; 
+			}
+		   i++;
+		}
+		ArrayUtil.normalizeLengthInPlace( or );
 	}
 	
 	/**

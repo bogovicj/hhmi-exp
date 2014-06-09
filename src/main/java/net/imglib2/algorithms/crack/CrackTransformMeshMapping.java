@@ -500,6 +500,7 @@ public class CrackTransformMeshMapping< T extends CrackTransformMesh > extends I
 
 					if( isInCrack ){
 						curs.get().setOne();
+						curs.get().mul( 255 );
 					
 					}
 				}

@@ -246,20 +246,33 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	/**
 	 * Returns a the dot product of the orientation of edgel e
 	 * and each of the edgels in the input list
+	 * @param  or orientation
+	 * @param candidates
+	 * @return 
+	 */
+	public double[] dotProduct( double[] or, List<Edgel> candidates)
+	{
+		double[] dots = new double[ candidates.size() ];
+		
+//		for(int i=candidates.size()-1; i>=0; i--)
+		for(int i=0; i<candidates.size(); i++)
+		{
+			double dot = LinAlgHelpers.dot( or, candidates.get(i).getGradient());
+			dots[i] = dot;
+		}
+		return dots;
+	}
+	
+	/**
+	 * Returns a the dot product of the orientation of edgel e
+	 * and each of the edgels in the input list
 	 * @param e
 	 * @param candidates
 	 * @return 
 	 */
-	public float[] dotProduct(Edgel e, List<Edgel> candidates)
+	public double[] dotProduct(Edgel e, List<Edgel> candidates)
 	{
-		float[] dots = new float[ candidates.size() ];
-		
-		for(int i=candidates.size()-1; i>=0; i--)
-		{
-			double dot = LinAlgHelpers.dot(e.getGradient(), candidates.get(i).getGradient());
-			dots[i] = (float)dot;
-		}
-		return dots;
+		return dotProduct( e.getGradient(), candidates );
 	}
 
 	/**

@@ -51,9 +51,9 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 	
 	static Logger logger = LogManager.getLogger( EdgelClustering.class.getName() );
 	
-	public EdgelClustering( List<Edgel> edgels, EdgelMatching<T> matcher){
-		this.edgels = edgels;
+	public EdgelClustering( EdgelMatching<T> matcher){
 		this.matcher = matcher;
+		this.edgels = matcher.getEdgels();
 	}
 	
 	public void cluster(){
@@ -134,13 +134,13 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 //		for ( int i = 0; i < 3; i++ )
 		{
 			if ( i % 5000 == 0){
-				logger.info("   edgel " + i + " of " + edgels.size() );
+				logger.debug("   edgel " + i + " of " + edgels.size() );
 			}
 			
 			Edgel e = edgels.get(i);
 			ArrayList<Edgel> matches = matcher.candidateEdgels( e );
-//			boolean[] sameSide = matcher.similarlyOriented(e, matches);
-			float[] dots = matcher.dotProduct(e, matches);
+			boolean[] sameSide = matcher.similarlyOriented(e, matches);
+			double[] dots = matcher.dotProduct(e, matches);
 
 			// initialize
 			if( i == 0){ labelMems[i] = 1.0f; }
@@ -151,17 +151,60 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 //				logger.info(" find best among " + matches.size() + " matches ");
 //				labelMems[i] = bestClassMem( sameSide, matches );
 				labelMems[i] = bestClassMem( dots, matches );
+//				labelMems[i] = bestClassMemNorm( dots, matches );
 			}else if ( Math.abs(thisClass) > propThresh ){
 //				logger.info(" propagate to " + matches.size() + " matches ");
-//				propagateClassMem( i, sameSide, matches );
-				propagateClassMem( i, dots, matches );
+				propagateClassMem( i, sameSide, matches );
+//				propagateClassMem( i, dots, matches );
 			}
-			
 		}
-		
 		return 1;
 	}
-	public float bestClassMem( float[] dots, List<Edgel> matches ){
+	
+	public float bestClassMemNorm( double[] dots, List<Edgel> matches ){
+
+		float posSum = 0.0f;
+		float negSum = 0.0f;
+		
+		for ( int j=0; j<matches.size(); j++ )
+		{
+			Edgel match = matches.get(j);
+			int k = edgels.indexOf(match);
+
+			if ( Math.abs(labelMems[k]) != 0 &&
+				 Math.abs(dots[j]) > dotThresh	)
+			{
+				if( labelMems[k]*dots[j] > 0 )
+				{
+					posSum += labelMems[k]*dots[j];
+				}
+				else
+				{
+					// here labelMems * dots is negative
+					// but we want negSum to be positive, so subtract
+					negSum -= labelMems[k]*dots[j];
+				}
+			}
+		}
+		
+		
+		
+		float memout = 0f;
+		
+		if( posSum + negSum < eps ){
+			return memout;
+		}
+		
+		if( posSum > negSum ){
+			memout = posSum/( posSum + negSum );
+		}else{
+			memout = negSum/( posSum + negSum );
+		}
+
+		return memout;
+	}
+	
+	public float bestClassMem( double[] dots, List<Edgel> matches ){
 
 		float memOut = 0.0f;
 		float dotSum = 0.0f;
@@ -181,6 +224,25 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 		return memOut;
 	}
 	
+	public void propagateClassMemNorm( int i, float[] dots, List<Edgel> matches ){
+		
+		float thisMem = labelMems[i];
+		
+		
+		for ( int j=0; j<matches.size(); j++ )
+		{
+			Edgel match = matches.get(j);
+			int k = edgels.indexOf(match);
+			
+			if( Math.abs(labelMems[k]) < eps &&
+					Math.abs(dots[j]) > dotThresh )
+			{
+				labelMems[k] =   propMul * dots[j] * thisMem;
+			}
+			
+		}
+	}
+	
 	public void propagateClassMem( int i, float[] dots, List<Edgel> matches ){
 		
 		float thisMem = labelMems[i];
@@ -198,7 +260,6 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 		}
 	}
 
-	
 	public void propagateClassMem( int i, boolean[] sameSide, List<Edgel> matches ){
 		
 		float thisMem = labelMems[i];
@@ -405,8 +466,9 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 		cc.computeEdgels();
 		cc.edgelMatcher.setEdgels(cc.getEdgels());
 		
-		EdgelClustering<FloatType> ec = new EdgelClustering<FloatType>(
-				cc.getEdgels(), cc.edgelMatcher);
+		EdgelClustering<FloatType> ec = 
+				new EdgelClustering<FloatType>(
+						cc.edgelMatcher);
 		
 		ec.cluster( );
 		Img<FloatType> clusterImg = img.factory().create( img, img.firstElement());
@@ -415,7 +477,7 @@ public class EdgelClustering <T extends RealType<T> & NativeType<T>>
 		
 		Format formatter = new SimpleDateFormat("yyyyMMdd-HHmmss");
 		String dtstr = formatter.format(Calendar.getInstance().getTime());
-		String fn = String.format("/groups/jain/home/bogovicj/tmp/edgelClustersMem_%s.tif", dtstr);
+		String fn = String.format("/groups/saalfeld/home/bogovicj/tmp/edgelClustersMem_%s.tif", dtstr);
 		logger.info("fn: " + fn);
 		ImgOps.writeFloat( clusterImg, fn);
 		
