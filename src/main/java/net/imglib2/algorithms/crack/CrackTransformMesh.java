@@ -277,7 +277,7 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 				triangle = new ArrayList<PointMatch>(3);
 				
 				if( even ){  
-					logger.debug("even triangle");
+					logger.trace("even triangle");
 					// even triangles use two points from ptList2
 					p1 = ptList1[i];	
 					p2 = ptList2[i];	
@@ -288,7 +288,7 @@ public class CrackTransformMesh implements InvertibleCoordinateTransform
 					m3 = ptList2[j+2];	
 
 				}else{
-					logger.debug("odd  triangle");
+					logger.trace("odd  triangle");
 					// odd triangles use two points from ptList1
 					p1 = ptList1[i];	
 					p2 = ptList1[i+2];	

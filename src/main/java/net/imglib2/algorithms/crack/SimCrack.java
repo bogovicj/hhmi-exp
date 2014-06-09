@@ -664,6 +664,10 @@ public class SimCrack {
 		}
 	}
 	
+	public void  genCrack2d( float[] startPt, float[] endPt, int crackLength, float crackWidth){
+		genCrack2d( startPt, endPt, crackLength, crackWidth, 0f, 0f, 0f, null);
+	}
+	
 	public void genCrack2d( float[] startPt, float[] endPt, int crackLength,
 			float distShp, float distScale, float skewMn, float skewVar)
 	{
@@ -685,7 +689,11 @@ public class SimCrack {
 		
 		double[] ptSpacing = new double[ crackLength - 2 ];
 		for( int i=0; i<ptSpacing.length; i++){
-			ptSpacing[i] = rand.nextUniform( 0, 1 );
+			if( rand != null ){
+				ptSpacing[i] = rand.nextUniform( 0, 1 );
+			}else{
+				ptSpacing[i] =  i / (double)(ptSpacing.length-1) ;
+			}
 		}
 		Arrays.sort( ptSpacing );
 		logger.debug(" pt Spacing \n" + ArrayUtil.printArray( ptSpacing ));
@@ -700,10 +708,14 @@ public class SimCrack {
 		ArrayUtil.normalizeLengthInPlace(lineVec);
 		float[] lineVecPerp = SimpleLinAlg.orth2d( lineVec );
 		
+		double skewAmt = 0;
+		double dist    = distShp;
 		for( int i=0; i<crackLength; i++)
 		{
-			double skewAmt = rand.nextGaussian( skewMn, skewVar);
-			double dist = rand.nextGamma( distShp, distScale );
+			if ( rand != null ){
+				skewAmt = rand.nextGaussian( skewMn, skewVar);
+				dist = rand.nextGamma( distShp, distScale );	
+			}
 			
 			for( int d=0; d<startPt.length; d++)
 			{
@@ -714,6 +726,8 @@ public class SimCrack {
 		
 		logger.debug(" crack Pts:\n" + ArrayUtil.printArray( crackCtrlPts ));
 		logger.debug("\n crack Offsets:\n" + ArrayUtil.printArray( crackCtrlOffsets ));
+		
+		buildXfmMesh();
 	}
 	
 	
