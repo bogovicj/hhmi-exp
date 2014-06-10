@@ -181,6 +181,31 @@ public class EdgelTools {
 		}
 	}
 
+	public static void averageGradientDirectionReOrient( Collection<Edgel> edgels, double[] or, double[] dots, float dotThresh )
+	{
+	    int i = 0;
+		Arrays.fill( or, 0f );
+	   	for( Edgel e : edgels )
+		{
+		   if ( dots[i] > dotThresh ) 
+		   {
+
+			  double[] grd = e.getGradient();
+			  for( int d=0; d<or.length; d++){
+				 or[d] += grd[d]; 
+			  }
+		   }
+		   else if( dots[i] < -dotThresh ) 
+		   {
+			  double[] grd = e.getGradient();
+			  for( int d=0; d<or.length; d++){
+				 or[d] -= grd[d]; 
+			  }
+		   }
+		   i++;
+		}
+		ArrayUtil.normalizeLengthInPlace( or );
+	}
 	public static void averageGradientDirectionNaive( Collection<Edgel> edgels, double[] or )
 	{
 	    int i = 0;

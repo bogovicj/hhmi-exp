@@ -12,6 +12,7 @@ import java.io.ObjectOutputStream;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -250,15 +251,17 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	 * @param candidates
 	 * @return 
 	 */
-	public double[] dotProduct( double[] or, List<Edgel> candidates)
+	public double[] dotProduct( double[] or, Collection<Edgel> candidates)
 	{
 		double[] dots = new double[ candidates.size() ];
 		
 //		for(int i=candidates.size()-1; i>=0; i--)
-		for(int i=0; i<candidates.size(); i++)
+		int i = 0;
+		for( Edgel c : candidates )
 		{
-			double dot = LinAlgHelpers.dot( or, candidates.get(i).getGradient());
+			double dot = LinAlgHelpers.dot( or, c.getGradient());
 			dots[i] = dot;
+			i++;
 		}
 		return dots;
 	}
@@ -270,7 +273,7 @@ public class EdgelMatching<T extends NativeType<T> & RealType<T>>{
 	 * @param candidates
 	 * @return 
 	 */
-	public double[] dotProduct(Edgel e, List<Edgel> candidates)
+	public double[] dotProduct(Edgel e, Collection<Edgel> candidates)
 	{
 		return dotProduct( e.getGradient(), candidates );
 	}
