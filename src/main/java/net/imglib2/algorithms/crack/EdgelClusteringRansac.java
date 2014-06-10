@@ -42,6 +42,7 @@ public class EdgelClusteringRansac <T extends RealType<T> & NativeType<T>>
 	
 	private final List<Edgel> edgels;
 	private EdgelMatching<?> matcher;
+	private int ndims;
 	
 	private float[] labelMems;
 	private float   propMul 	= 1f;
@@ -49,7 +50,7 @@ public class EdgelClusteringRansac <T extends RealType<T> & NativeType<T>>
 	
 	private float   propThresh 	= 0.0001f;
 	private float   dotThresh   = 0.5f;
-	private   int   fitIters    = 7;
+	private   int   fitIters    = 5;
 	
 	private int maxIters = 3;
 	
@@ -71,110 +72,201 @@ public class EdgelClusteringRansac <T extends RealType<T> & NativeType<T>>
 	public EdgelClusteringRansac(EdgelMatching<T> matcher){
 		this.matcher = matcher;
 		edgels = matcher.getEdgels();
+		ndims = edgels.get(0).numDimensions();
+		
+		rand.reSeed( 316497258L );
 	}
 	
 	public void setDotTolerance( float dotTol ){
 		dotThresh = dotTol;
 	}
 	
-	public void cluster(){
-		
-//		findNeighbors();
+	public void cluster()
+	{
 		
 		int N = edgels.size();
 		if( labelMems == null ){
 			labelMems = new float[ N ];
 		}
+		logger.debug("clustering " + N + " edgels");
 		
 		numNotSeed = N;
 		seeded = new boolean[ N ]; 
 		
 		posEdgels = new LinkedList<Edgel>();
 		negEdgels = new LinkedList<Edgel>();
+		consSet   = new HashSet<Edgel>();
 		
-		Edgel match = findOpposite( edgels.get(0) );
-
-		logger.debug( " " + edgels.get(0) );
-		logger.debug( " " + match ) ;
+		Edgel[] startPair = getStartingEdgels( 500 );
+		Edgel fpos = startPair[0];
+		Edgel fneg = startPair[1];
 		
 		// first pos
-		labelMems[0] = 1f;
-		double[] or = new double[ edgels.get(0).numDimensions() ];
-		double[] dots = fitOrientationModel( or, edgels.get(0) );
-		boolean contradiction = updateConsensusSetMems( or, dots );
+		labelMems[edgels.indexOf(fpos)] = 1f;
+		double[] or = new double[ fpos.numDimensions() ];
+		double[] dots = fitOrientationModel( or, fpos );
+		boolean contradiction = updateConsensusSetMemsFirst( or, dots );
 		
 		// first neg
-		labelMems[ edgels.indexOf(match) ] = -1f;
+		labelMems[ edgels.indexOf(fneg) ] = -1f;
 		Arrays.fill(or, 0);
-		dots = fitOrientationModel( or, match );
-		contradiction = updateConsensusSetMems( or, dots );
+		dots = fitOrientationModel( or, fneg );
+		contradiction = updateConsensusSetMemsFirst( or, dots );
 		
-		System.out.println(" pos edgel size " + posEdgels.size() );
-		System.out.println(" neg edgel size " + negEdgels.size() );
+		logger.debug("pos edgel size " + posEdgels.size() );
+		logger.debug("neg edgel size " + negEdgels.size() );
 		
 		logger.debug( " or " + ArrayUtil.printArray(or) ) ;
 		logger.debug( " cset size " + consSet.size() ) ;
 		logger.debug(" is contradiction: " + contradiction );
 		
 		
-//		while( numNotSeed > 0 )
+		runFirstIteration();
+		
+//		for ( int iter=0; iter<3; iter++)
 //		{
-//			// do a positive edgel
-//			Edgel e = posEdgels.remove();
-//			Arrays.fill(or, 0);
-//			dots = fitOrientationModel( or, e );
-//			contradiction = updateConsensusSetMems( or, dots );
-//			
-//			// do a negative edgel
-//			e = negEdgels.remove();
-//			Arrays.fill(or, 0);
-//			dots = fitOrientationModel( or, e );
-//			contradiction = updateConsensusSetMems( or, dots );
-//			
-//			System.out.println( "nns " + numNotSeed );
-//		}
-		
-		
-		
-//		for( int i = 0; i<maxIters; i++ )
-//		{
-//
-//			logger.info("iteration " + i + " of " + maxIters );
-//			
-//			// run an iteration
-//			
-//			lastIterConflicts = nConflicts;
-//			
+//			logger.info("iteration: " + iter);
+//			runIteration();
 //		}
 	}
 	
+	
+	public void runFirstIteration()
+	{
+		double[] or   = new double[ ndims ];
+		double[] dots = new double[ ndims ];
+		
+		boolean contradiction = false;
+		
+		int n = 0;
+//		while(  posEdgels.size() > 0 && 
+//				negEdgels.size() > 0 && 
+//				n < 20000)
+		int lastNotSeedCount = -1;
+		int nscReps = 0;
+		while( numNotSeed > 0 )
+		{
+			logger.debug( "nns " + numNotSeed );
+			
+			// do a positive edgel
+			if( posEdgels.size() > 0 ){
+				Edgel e = posEdgels.remove();
+				Arrays.fill(or, 0);
+				dots = fitOrientationModel( or, e );
+				contradiction = updateConsensusSetMemsFirst( or, dots );
+				logger.debug(" is contradiction: " + contradiction );
+			}
+			
+			// do a negative edgel
+			if( negEdgels.size() > 0 ){
+				Edgel e = negEdgels.remove();
+				Arrays.fill(or, 0);
+				dots = fitOrientationModel( or, e );
+				contradiction = updateConsensusSetMemsFirst( or, dots );
+			}
+			
+			logger.trace(" is contradiction: " + contradiction );
+			logger.trace(" pos edgel size " + posEdgels.size() );
+			logger.trace(" neg edgel size " + negEdgels.size() );
+			
+			if(lastNotSeedCount == numNotSeed  ){
+				nscReps++;
+			}else{
+				nscReps = 0;
+			}
+			
+			if ( nscReps == 10 ){
+				break;
+			}
+			
+			lastNotSeedCount = numNotSeed;
+			
+			n++;
+		}
+	}
+	
+	public Edgel[] getStartingEdgels ( int maxTries ) 
+	{
+		Edgel[] firstMatches = new Edgel[2];
+		
+		int n = 0;
+		while( n < maxTries ){
+			
+			int i = rand.nextInt(0, edgels.size()-1); 
+			Edgel e = edgels.get(i);
+			
+			Edgel f = findOpposite( e );
+			
+			if( f != null ){
+				firstMatches[0] = e;
+				firstMatches[1] = f;
+				break;
+			}
+			n++;
+		}
+		logger.debug("Found starting edgels after " + n + " iterations.");
+		return firstMatches;
+	}
+	
+	public Edgel findOppositeLoopy( Edgel e ){
+		int best = -1;
+		boolean first = true;
+		while( best < 0 && matcher.getEdgelSearchCount() < 61 )
+		{
+			if( first ){ first = false; }
+			else{ 
+				matcher.setEdgelSearchCount( 
+					matcher.getEdgelSearchCount() + 2 ); 
+			}
+			
+			ArrayList<Edgel> matches = matcher.candidateEdgels(e);
+			double[] dots = matcher.dotProduct(e, matches);
+			double min = -0.01f;
+			for( int i = 0; i<dots.length; i++){
+				if( dots[i] < min ){
+					min = dots[i];
+					best = i;
+				}
+			}
+		}
+		return matches.get(best);
+	}
+	
 	public Edgel findOpposite( Edgel e ){
+		int best = -1;
+
 		ArrayList<Edgel> matches = matcher.candidateEdgels(e);
 		double[] dots = matcher.dotProduct(e, matches);
-		double min = -0.1f;
-		int best = -1;
+		double min = -0.01f;
 		for( int i = 0; i<dots.length; i++){
 			if( dots[i] < min ){
 				min = dots[i];
 				best = i;
 			}
 		}
+		
+		if ( best == -1 ){ return null; }
+		
 		return matches.get(best);
 	}
-	
-	public void firstIter(){
-		
-	}
-	
+
 	public double[] fitOrientationModel( double[] orientation, Edgel e ){
 		
-		seeded[ edgels.indexOf(e) ] = true;
-		numNotSeed--;
+		int i = edgels.indexOf(e);
+		logger.trace(" fitting model around edgel idx " + i);
+		
+		if(  !seeded[ i ] )
+		{
+			seeded[ i ] = true;
+			numNotSeed--;
+		}
 		
 		matches = matcher.candidateEdgels(e);
+		matches.add(e);
 		
-		consSet = new HashSet<Edgel>();
+		consSet.clear();
 		consSet.addAll( matches );
+		consSet.add(e);
 		
 		double[] dots = null;
 		
@@ -193,8 +285,7 @@ public class EdgelClusteringRansac <T extends RealType<T> & NativeType<T>>
 			int N = matches.size();
 			dots = matcher.dotProduct( orientation, matches );
 			
-			
-			for( int i=0; i<N; i++ ) 
+			for( i=0; i<N; i++ ) 
 			{	
 				if( dots[i] > dotThresh ) { 
 					boolean wasChange = consSet.add( matches.get(i) );
@@ -207,8 +298,6 @@ public class EdgelClusteringRansac <T extends RealType<T> & NativeType<T>>
 			}
 			
 			// exit if consensus set did not change
-			logger.trace(" consensus set size: " + consSet.size());
-			
 			if( !anyChanges ){
 				logger.trace(" exit after " + iter + " iters");
 				break;
@@ -218,27 +307,14 @@ public class EdgelClusteringRansac <T extends RealType<T> & NativeType<T>>
 		return dots;
 	}
 	
-	public void updateConsensusSetMemsOld( double[] dots, double[] or )
-	{		
-		double max = 0;
-		
-		for( Edgel c : consSet )
-		{	
-			int j = edgels.indexOf( c );
-			
-			if( labelMems[j] != 0 ){
-				labelMems[j] = (float)( LinAlgHelpers.dot( or, c.getGradient()) );
-			}
-		}
-	}
-	
-	public boolean updateConsensusSetMems( double[] or, double[] dots )
+	public boolean updateConsensusSetMemsFirst( double[] or, double[] dots )
 	{
-		logger.debug("Updating memberships, cset of size: " + consSet.size() );
+		logger.trace("Updating memberships, cset of size: " + consSet.size() );
+		
 		boolean first = true;
 		boolean contradiction = false;
-		float val = Float.NaN;
 		
+		float val = Float.NaN;
 		double posSum = 0;
 		double negSum = 0;
 		
@@ -250,7 +326,9 @@ public class EdgelClusteringRansac <T extends RealType<T> & NativeType<T>>
 			int j = edgels.indexOf( c );
 			idxs[i] = j;
 			
-			if( first && labelMems[j] != 0 )
+			if(  first && 
+				( labelMems[j] >  propThresh || 
+				  labelMems[j] < -propThresh ))
 			{
 				val = labelMems[ j ];
 				first = false;
@@ -263,17 +341,21 @@ public class EdgelClusteringRansac <T extends RealType<T> & NativeType<T>>
 			if( labelMems[j] > propThresh ){
 				posSum += labelMems[j];
 			}else if(  labelMems[j] < -propThresh ){
-				negSum -= labelMems[j];
+				negSum -= labelMems[j]; // make negsum positive
 			}
 			
 			i++;
 		}
 		
 		double tmp = posSum + negSum;
-		if( tmp > eps ){
+		if( tmp > eps )
+		{
 			posSum = posSum / tmp;
 			negSum = negSum / tmp;
 		}
+		
+		logger.trace("posSum " + posSum );
+		logger.trace("negSum " + negSum );
 		
 		if( posSum > negSum ){
 			val =  (float)posSum;
@@ -286,15 +368,21 @@ public class EdgelClusteringRansac <T extends RealType<T> & NativeType<T>>
 			int j = idxs[i];
 			labelMems[j] = (float)( 0.7 * val + 0.3 * labelMems[j]); 
 			
-			if( labelMems[j] > 0 && !seeded[j])
-			{
-				posEdgels.add( edgels.get(j) );
-			}
-			else if( labelMems[j] > 0 && !seeded[j] )
-			{
-				negEdgels.add( edgels.get(j) );
-			}
+			logger.trace("labelMem " + j + " " + labelMems[j] );
 			
+			if( !seeded[j] )
+			{
+				if( labelMems[j] > 0  && 
+					!posEdgels.contains( edgels.get(j)))
+				{
+					posEdgels.add( edgels.get(j) );
+				}
+				else if( labelMems[j] < 0 && 
+						 !negEdgels.contains( edgels.get(j)))
+				{
+					negEdgels.add( edgels.get(j) );
+				}
+			}
 		}
 		
 		return contradiction;
