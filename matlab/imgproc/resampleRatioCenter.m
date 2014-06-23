@@ -16,7 +16,7 @@ szout = ceil(szin ./ ratio);
 ctr_in = ceil(szin./2);
 % ctr_out = ceil(szout./2);
 
-kerHalfWidth = 1 + (ratio-1)./2
+kerHalfWidth = 1 + (ratio-1)./2;
 
 %% do the work 
 
