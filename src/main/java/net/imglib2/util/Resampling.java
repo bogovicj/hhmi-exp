@@ -2,6 +2,7 @@ package net.imglib2.util;
 
 import net.imglib2.*;
 import net.imglib2.img.*;
+import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.*;
 import net.imglib2.view.Views;
 import net.imglib2.algorithm.gauss3.*;
@@ -19,7 +20,7 @@ public class Resampling {
 	 *
 	 * @return a new {@link Img}
 	 */
-	public static <T extends RealType<T>> Img<T> resampleGaussian( 
+	public static <T extends RealType<T> & NativeType<T>> Img<T> resampleGaussian( 
 			RandomAccessibleInterval<T> img,
 			ImgFactory<T> factory,
 			double[] downsampleFactors, 
@@ -57,6 +58,7 @@ public class Resampling {
 			e.printStackTrace();
 		}
 		
+		RandomAccess<T> tmpRa = tmp.randomAccess();
 		
 		int[][] coordLUT = new int[ndims][];
 		for( int d = 0; d<ndims; d++)
@@ -76,8 +78,8 @@ public class Resampling {
 		{
 			outc.fwd();
 			outc.localize( pos );
-			setPositionFromLut( pos, coordLUT, inRa );
-			outc.get().set( inRa.get() );
+			setPositionFromLut( pos, coordLUT, tmpRa );
+			outc.get().set( tmpRa.get() );
 		}
 		
 		return out;
