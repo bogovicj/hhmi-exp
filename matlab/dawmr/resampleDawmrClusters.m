@@ -1,4 +1,4 @@
-function resampleDawmrCluters( dm, ratio )
+function resampleDawmrClusters( dm, ratio )
 % resampleDawmrCluters
 %
 % replaces the contents of dm's clusters with a subsampled

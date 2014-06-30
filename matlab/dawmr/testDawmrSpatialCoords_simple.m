@@ -1,4 +1,4 @@
-% testDawmrSpatialCoords 
+% testDawmrSpatialCoords_simple
 % 
 
 %%
@@ -14,13 +14,13 @@ m21 = ones( sz, 'uint8' );
 data_v21_fn = sprintf('%s/v21.h5',   basedir);
 m21_fn       = sprintf('%s/m21.h5',   basedir);
 
-if( true )
+if( false )
     writeH5( data_v21_fn,   v21 );
     writeH5( m21_fn,   m21, 'uint8' );
 end
 
 % centroids = eye( 125 );
-centroids = rand( 20, 125);
+% centroids = rand( 20, 125, 'single');
 
 %% 
 c_thresh_pol_kmeans = 3;
@@ -30,7 +30,7 @@ c_max_pooling       = 1;
 patch_dim           = 5;
 
 pooling_radius      = 0
-pooling_type        = c_ave_pooling;
+pooling_type        = c_max_pooling;
 
 num_clusters        = 50
 num_patches_kmeans  = 1000;
@@ -66,9 +66,22 @@ dc = dawmr_clustering(patch_dim, num_clusters);
 dp_cen  = dawmr_pooling(pooling_type, 0, [0 0 0]);
 dc.add_dp(dp_cen);
 
-dm = dawmr(ds, feature_normalization, ec_mlp_fs(mlp_init), ...
-        'v11_scriptName');
-dm = dawmr_add_multilayer(dm, dc, [1]);
+%%
+% dm = dawmr(ds, feature_normalization, ec_mlp_fs(mlp_init), ...
+%         'v11_scriptName');
+
+% structDm = load('/groups/saalfeld/home/bogovicj/reseach/exp/saved_exp/exp0009_crackSegDawmr_test/exp0009_crackSegDawmr_test_results.mat', ...
+%      'dm');
+structDm = load('/groups/saalfeld/home/bogovicj/reseach/exp/saved_exp/exp0008_crackSegDawmr_test/exp0008_crackSegDawmr_test_results.mat','dm'); 
+dm = structDm.dm;
+dm.ds = ds;
+
+dm.sn3_mn  = {};
+dm.sn3_std = {};
+dm.svm_normalization = 0;
+
+%%
+% dm = dawmr_add_multilayer(dm, dc, [1]);
 dm.dds.dcs.centroids = centroids;
 dm.dds.dcs.num_clusters = size(centroids,1);
 
@@ -82,6 +95,7 @@ dm.ds = ds;
 dm.svm_normalization = 0;
 
 cube_size = 1;
+
 
 xs = [ x_test x_test ];
 ys = [ y_test y_test ];
