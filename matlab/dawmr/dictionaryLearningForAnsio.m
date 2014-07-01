@@ -1,6 +1,7 @@
 %% dictionaryLearningForAnsio
 % run_script('dictionaryLearningForAnsio', 'patchR 7, clusters 50');
-% run_script('dictionaryLearningForAnsio', 'patchR 5, clusters 100, ms [1 2]');
+% run_script('dictionaryLearningForAnsio', 'iso - patchR 5, clusters 1000, scales [1]');
+% run_script('dictionaryLearningForAnsio', 'aniso z2 - patchR 5 5 3, clusters 1000, scales [1]');
 
 global SAVEPATH
 global SAVEPREFIX
@@ -8,22 +9,17 @@ global SAVEPREFIX
 script_name = mfilename;
 
 %%
-factor = [1 1 5];
+factor = [1 1 2];
+trnOnDs = 1;  % do training on downsampled volume
 
-destdir = '/groups/saalfeld/home/bogovicj/projects/aniso/downsamp/medulla';
+datdir = '/groups/saalfeld/home/bogovicj/projects/aniso/downsamp/medulla/dsdat';
 
 trnVolumeFn = ['/groups/jain/home/jainv/datasets/medulla_oct12/' ...
                 'validation/im_normalized_0mean.h5'];
 
 tstVolumeFn = ['/groups/jain/home/jainv/datasets/medulla_oct12/' ...
                 'testing/im_normalized_0mean.h5'];
-            
-[~,trnVolName] = fileparts( trnVolumeFn );
-[~,tstVolName] = fileparts( tstVolumeFn );
-
-trnVolDsFn = fullfile(destdir, sprintf('trn_%s_ds%d-%d-%d.h5',trnVolName,factor));
-tstVolDsFn = fullfile(destdir, sprintf('tst_%s_ds%d-%d-%d.h5',tstVolName,factor));
-
+    
 %
 training = 18;
 base_dir_ira = sprintf('/groups/jain/home/huangg/research/exp/medulla_ira_training%d/', training);
@@ -35,48 +31,74 @@ base_dir_gbh = sprintf(['/groups/jain/home/huangg/research/exp/medulla_ira_valid
 labels_fn_test = [base_dir_gbh 'labels.h5'];
 mask_fn_test   = [base_dir_gbh 'mask.h5'];
 
-ds = dawmr_set( { trnVolumeFn,   '', tstVolumeFn   }, ...
-                { labels_fn_train, '', labels_fn_test }, ...
-                { mask_fn_train,   '', mask_fn_test   }, ...
-                trnVolumeFn );
+[~,trnVolName] = fileparts( trnVolumeFn );
+[~,tstVolName] = fileparts( tstVolumeFn );
+trnVolDsFn = fullfile(datdir, sprintf('trn_%s_ds%d-%d-%d.h5',trnVolName,factor));
+tstVolDsFn = fullfile(datdir, sprintf('tst_%s_ds%d-%d-%d.h5',tstVolName,factor));
+
+[~,trnMskName] = fileparts( mask_fn_train );
+[~,tstMskName] = fileparts( mask_fn_test );
+trnMskDsFn = fullfile(datdir, sprintf('trn_%s_ds%d-%d-%d.h5',trnMskName,factor));
+tstMskDsFn = fullfile(datdir, sprintf('tst_%s_ds%d-%d-%d.h5',tstMskName,factor));
+
+[~,trnLabName] = fileparts( labels_fn_train );
+[~,tstLabName] = fileparts( labels_fn_test );
+trnLabDsFn = fullfile(datdir, sprintf('trn_%s_ds%d-%d-%d.h5',trnLabName,factor));
+tstLabDsFn = fullfile(datdir, sprintf('tst_%s_ds%d-%d-%d.h5',tstLabName,factor));
+
+if( ~exist(trnVolDsFn,'file') )
+    fprintf('writing test volume %d-%d-%d\n',factor);
+    success = downsampWriteH5( trnVolumeFn, trnVolDsFn, factor );
+end
+if( ~exist(trnMskDsFn,'file') )
+    fprintf('writing training mask %d-%d-%d\n',factor);
+    success = downsampWriteH5( mask_fn_train, trnMskDsFn, factor, 'or' );
+end
+if( ~exist(trnLabDsFn,'file') )
+    fprintf('writing training labels %d-%d-%d\n',factor);
+    success = downsampWriteH5( labels_fn_train, trnLabDsFn, factor, 'avg' );
+end
+
+if( ~exist(tstVolDsFn,'file') )
+    fprintf('writing test volume %d-%d-%d\n',factor);
+    success = downsampWriteH5( tstVolumeFn, tstVolDsFn, factor );
+end
+if( ~exist(tstMskDsFn,'file') )
+    fprintf('writing test mask %d-%d-%d\n',factor);
+    success = downsampWriteH5( mask_fn_test, tstMskDsFn, factor, 'or' );
+end
+if( ~exist(tstVolDsFn,'file') )
+    fprintf('writing test labels %d-%d-%d\n',factor);
+    success = downsampWriteH5( labels_fn_test, tstLabName, factor, 'avg' );
+end
+
+
+% train on isotropic
+if ( trnOnDs )
+    ds = dawmr_set( { trnVolDsFn,   '', ''   }, ...
+                    { trnLabDsFn, '', '' }, ...
+                    { trnMskDsFn,   '', ''   }, ...
+                    trnVolDsFn );
+else
+    ds = dawmr_set( { trnVolumeFn,   '', ''   }, ...
+                    { labels_fn_train, '', '' }, ...
+                    { mask_fn_train,   '', ''   }, ...
+                    trnVolumeFn );
+end
+      
 ds.affinity_edges = [];
-
-%% downsample z
-
-% trnVol = read_image_stack( trnVolumeFn );
-% trnvolil = toImglib( trnVol ); 
-% clear trnVol
-% trnVolilds = downSampleGaussianImglib( trnvolil, factor ); 
-% clear trnvolil
-% trnVolDs = net.imglib2.util.ImgOps.toFloatArray3d( trnVolilds ); 
-% clear trnVolilds
-% writeH5( trnVolDsFn, trnVolDs); 
-% clear trnVolDs
-% 
-% tstVol = read_image_stack( tstVolumeFn );
-% tstvolil = toImglib( tstVol );
-% clear tstVol 
-% tstVolilds = downSampleGaussianImglib( tstvolil, factor );
-% clear tstvolil
-% tstVolDs = net.imglib2.util.ImgOps.toFloatArray3d( tstVolilds );
-% clear tstVolilds
-% writeH5( tstVolDsFn, tstVolDs ); 
-% clear tstVolDs
-% 
-% % BrowseComponents('ii', trnVol, tstVol);
-
 
 %% specify unsupervised architecture
 c_thresh_pol_kmeans = 3;
 c_ave_pooling       = 0;
 c_max_pooling       = 1;
-patch_dim           = 5
+patch_dim           = [5 5 3]
 
 pooling_radius      = 2;
 pooling_type        = c_max_pooling;
 
-num_clusters        = 100
-num_patches_kmeans  = 1000;
+num_clusters        = 1000
+num_patches_kmeans  = 10000;
 num_train_instances = Inf;
 num_test_instances  = Inf;
 
@@ -90,14 +112,14 @@ dc.add_dp(dp_cen);
 
 downsampling_type = 1;
 
-
 mlp_init = mlp(100); % doesn't matter
 
 
 %% set up model, do learning
 ts = tic;
 dm = dawmr(ds, feature_normalization, ec_mlp_fs(mlp_init), script_name);
-dm = dawmr_add_multilayer( dm, dc, [1 2]);
+dm = dawmr_add_multilayer( dm, dc, [1]);
+% dm = dawmr_add_multilayer( dm, dc, [1 2]);
 % dm = dawmr_add_multilayer( dm, dc, scales );
 
 fprintf('learning features\n');
