@@ -2,6 +2,8 @@
 % run_script('dictionaryLearningForAnsio', 'patchR 7, clusters 50');
 % run_script('dictionaryLearningForAnsio', 'iso - patchR 5, clusters 1000, scales [1]');
 % run_script('dictionaryLearningForAnsio', 'aniso z2 - patchR 5 5 3, clusters 1000, scales [1]');
+%
+% run_script('dictionaryLearningForAnsio', 'MEDULLA SAMPLE, iso - patch 5x5x5, clusters 1000, scales [1]');
 
 global SAVEPATH
 global SAVEPREFIX
@@ -12,27 +14,34 @@ script_name = mfilename;
 factor = [1 1 2];
 trnOnDs = 1;  % do training on downsampled volume
 
-datdir = '/groups/saalfeld/home/bogovicj/projects/aniso/downsamp/medulla/dsdat';
-
-trnVolumeFn = ['/groups/jain/home/jainv/datasets/medulla_oct12/' ...
-                'validation/im_normalized_0mean.h5'];
-
-tstVolumeFn = ['/groups/jain/home/jainv/datasets/medulla_oct12/' ...
-                'testing/im_normalized_0mean.h5'];
-    
-%
+% datdir = '/groups/saalfeld/home/bogovicj/projects/aniso/downsamp/sample_medulla/dsdat';
+% base_dir = '/groups/saalfeld/home/bogovicj/dev/dawmr/dawmr_lib_public/projects/sample_medulla';
+% 
+% data_fn_train   = sprintf('%s/medulla_sub1_data.h5',   base_dir);
+% mask_fn_train   = sprintf('%s/medulla_sub1_mask_1.h5',   base_dir);
+% labels_fn_train = sprintf('%s/medulla_sub1_labels_1.h5', base_dir);
+% 
+% data_fn_test    = sprintf('%s/medulla_sub2_data.h5',   base_dir);
+% mask_fn_test    = sprintf('%s/medulla_sub2_mask_1.h5',   base_dir);
+% labels_fn_test  = sprintf('%s/medulla_sub2_labels_1.h5', base_dir);
+   
 training = 18;
-base_dir_ira = sprintf('/groups/jain/home/huangg/research/exp/medulla_ira_training%d/', training);
-labels_fn_train = [base_dir_ira 'labels.h5'];
-mask_fn_train   = [base_dir_ira 'mask.h5'];
+test = 4;
+ds = ds_medulla(training, test);
 
-test = 3;
-base_dir_gbh = sprintf(['/groups/jain/home/huangg/research/exp/medulla_ira_validation%d/'], test);
-labels_fn_test = [base_dir_gbh 'labels.h5'];
-mask_fn_test   = [base_dir_gbh 'mask.h5'];
+data_fn_train = ds.data_fn{1};
+data_fn_test  = ds.data_fn{3};
 
-[~,trnVolName] = fileparts( trnVolumeFn );
-[~,tstVolName] = fileparts( tstVolumeFn );
+mask_fn_train = ds.mask_fn{1};
+mask_fn_test  = ds.mask_fn{3};
+
+labels_fn_train = ds.labels_fn{1};
+labels_fn_test  = ds.labels_fn{3};
+
+%%
+
+[~,trnVolName] = fileparts( data_fn_train );
+[~,tstVolName] = fileparts( data_fn_test );
 trnVolDsFn = fullfile(datdir, sprintf('trn_%s_ds%d-%d-%d.h5',trnVolName,factor));
 tstVolDsFn = fullfile(datdir, sprintf('tst_%s_ds%d-%d-%d.h5',tstVolName,factor));
 
@@ -47,37 +56,37 @@ trnLabDsFn = fullfile(datdir, sprintf('trn_%s_ds%d-%d-%d.h5',trnLabName,factor))
 tstLabDsFn = fullfile(datdir, sprintf('tst_%s_ds%d-%d-%d.h5',tstLabName,factor));
 
 if( ~exist(trnVolDsFn,'file') )
-    fprintf('writing test volume %d-%d-%d\n',factor);
-    success = downsampWriteH5( trnVolumeFn, trnVolDsFn, factor );
+    fprintf('writing training volume %d-%d-%d\n',factor);
+    success = downsampWriteH5( data_fn_train, trnVolDsFn, factor );
 end
 if( ~exist(trnMskDsFn,'file') )
     fprintf('writing training mask %d-%d-%d\n',factor);
-    success = downsampWriteH5( mask_fn_train, trnMskDsFn, factor, 'or' );
+    success = downsampWriteH5( mask_fn_train, trnMskDsFn, factor );
 end
 if( ~exist(trnLabDsFn,'file') )
     fprintf('writing training labels %d-%d-%d\n',factor);
-    success = downsampWriteH5( labels_fn_train, trnLabDsFn, factor, 'avg' );
+    success = downsampWriteH5( labels_fn_train, trnLabDsFn, factor );
 end
 
 if( ~exist(tstVolDsFn,'file') )
     fprintf('writing test volume %d-%d-%d\n',factor);
-    success = downsampWriteH5( tstVolumeFn, tstVolDsFn, factor );
+    success = downsampWriteH5( data_fn_test, tstVolDsFn, factor );
 end
 if( ~exist(tstMskDsFn,'file') )
     fprintf('writing test mask %d-%d-%d\n',factor);
-    success = downsampWriteH5( mask_fn_test, tstMskDsFn, factor, 'or' );
+    success = downsampWriteH5( mask_fn_test, tstMskDsFn, factor );
 end
-if( ~exist(tstVolDsFn,'file') )
+if( ~exist(tstLabDsFn,'file') )
     fprintf('writing test labels %d-%d-%d\n',factor);
-    success = downsampWriteH5( labels_fn_test, tstLabName, factor, 'avg' );
+    success = downsampWriteH5( labels_fn_test, tstLabDsFn, factor );
 end
 
 
 % train on isotropic
 if ( trnOnDs )
-    ds = dawmr_set( { trnVolDsFn,   '', ''   }, ...
-                    { trnLabDsFn, '', '' }, ...
-                    { trnMskDsFn,   '', ''   }, ...
+    ds = dawmr_set( { trnVolDsFn,   '', tstVolDsFn   }, ...
+                    { trnLabDsFn, '', tstLabDsFn }, ...
+                    { trnMskDsFn,   '', tstMskDsFn   }, ...
                     trnVolDsFn );
 else
     ds = dawmr_set( { trnVolumeFn,   '', ''   }, ...
@@ -92,7 +101,7 @@ ds.affinity_edges = [];
 c_thresh_pol_kmeans = 3;
 c_ave_pooling       = 0;
 c_max_pooling       = 1;
-patch_dim           = [5 5 3]
+patch_dim           = [5 5 5]
 
 pooling_radius      = 2;
 pooling_type        = c_max_pooling;

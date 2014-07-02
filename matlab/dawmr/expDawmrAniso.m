@@ -6,38 +6,38 @@
 savedDatFn = '/groups/saalfeld/home/bogovicj/reseach/exp/saved_exp/exp0008_crackSegDawmr_test/exp0008_crackSegDawmr_test_results.mat';
 load( savedDatFn );
 
-for dsFactor = [ 3 5 7 9]
-    
-    ds_suffix =  ['_lr', num2str(dsFactor) ,'.h5']
-    
-    
-    % generate a downsampled image
-    basedir = '/groups/saalfeld/home/bogovicj/projects/aniso/downsamp';
-    [~,data_fn_train_ds] = fileparts(strrep(dm.ds.data_fn{1},  '.h5', ds_suffix ));
-    [~,mask_fn_train_ds] = fileparts(strrep(dm.ds.mask_fn{1},  '.h5', ds_suffix ));
-    [~,lbl_fn_train_ds ] = fileparts(strrep(dm.ds.labels_fn{1},'.h5', ds_suffix ));
-    
-    data_fn_train_ds = [fullfile(basedir, data_fn_train_ds) '.h5']
-    mask_fn_train_ds = [fullfile(basedir, mask_fn_train_ds) '.h5']
-    lbl_fn_train_ds  = [fullfile(basedir, lbl_fn_train_ds) '.h5']
-    
-    ds = dawmr_set( { data_fn_train,   '', data_fn_train_ds  }, ...
-        { labels_fn_train, '', lbl_fn_train_ds }, ...
-        { mask_fn_train,   '', mask_fn_train_ds }, ...
-        data_fn_train );
-    ds.affinity_edges = [];
-    
-    dm.ds = ds;
-    this = dm;
-    
-    [~,prefix,~] = fileparts( lbl_fn_train_ds );
-    fnout = sprintf('%s/%s_infer_%s.h5', basedir, prefix, datestr(now,30) );
-    
-    dm.infer([],[],...
-        fnout, ...
-        [],[],[],[20 20 20],[], 3);
-    
-end
+% for dsFactor = [ 3 5 7 9]
+%     
+%     ds_suffix =  ['_lr', num2str(dsFactor) ,'.h5']
+%     
+%     
+%     % generate a downsampled image
+%     basedir = '/groups/saalfeld/home/bogovicj/projects/aniso/downsamp';
+%     [~,data_fn_train_ds] = fileparts(strrep(dm.ds.data_fn{1},  '.h5', ds_suffix ));
+%     [~,mask_fn_train_ds] = fileparts(strrep(dm.ds.mask_fn{1},  '.h5', ds_suffix ));
+%     [~,lbl_fn_train_ds ] = fileparts(strrep(dm.ds.labels_fn{1},'.h5', ds_suffix ));
+%     
+%     data_fn_train_ds = [fullfile(basedir, data_fn_train_ds) '.h5']
+%     mask_fn_train_ds = [fullfile(basedir, mask_fn_train_ds) '.h5']
+%     lbl_fn_train_ds  = [fullfile(basedir, lbl_fn_train_ds) '.h5']
+%     
+%     ds = dawmr_set( { data_fn_train,   '', data_fn_train_ds  }, ...
+%         { labels_fn_train, '', lbl_fn_train_ds }, ...
+%         { mask_fn_train,   '', mask_fn_train_ds }, ...
+%         data_fn_train );
+%     ds.affinity_edges = [];
+%     
+%     dm.ds = ds;
+%     this = dm;
+%     
+%     [~,prefix,~] = fileparts( lbl_fn_train_ds );
+%     fnout = sprintf('%s/%s_infer_%s.h5', basedir, prefix, datestr(now,30) );
+%     
+%     dm.infer([],[],...
+%         fnout, ...
+%         [],[],[],[20 20 20],[], 3);
+%     
+% end
 
 %%
 
@@ -93,18 +93,18 @@ size( feats )
 
 %%
 
-savedRes = '/groups/saalfeld/home/bogovicj/reseach/exp/saved_exp/exp0008_crackSegDawmr_test/exp0008_crackSegDawmr_test_sub1_infer.h5';
-seg = read_image_stack( savedRes );
-
-dsList = [ 3 7 9 ];
-for i = 1:length(dsList)
-     
-    match = sprintf('%s/closeup_lbls_ds4_lr%d_infer_*.h5', basedir, dsList(i) )
-    a = dir(match);
-    fn = fullfile( basedir, a.name );
-    segds{i} = read_image_stack( fn );
-    
-end
+% savedRes = '/groups/saalfeld/home/bogovicj/reseach/exp/saved_exp/exp0008_crackSegDawmr_test/exp0008_crackSegDawmr_test_sub1_infer.h5';
+% seg = read_image_stack( savedRes );
+% 
+% dsList = [ 3 7 9 ];
+% for i = 1:length(dsList)
+%      
+%     match = sprintf('%s/closeup_lbls_ds4_lr%d_infer_*.h5', basedir, dsList(i) )
+%     a = dir(match);
+%     fn = fullfile( basedir, a.name );
+%     segds{i} = read_image_stack( fn );
+%     
+% end
 
 %%
 
