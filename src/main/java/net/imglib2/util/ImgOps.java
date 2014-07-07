@@ -658,6 +658,18 @@ public class ImgOps {
 	      return out;
 	   }
    
+   public static <T extends NativeType<T> & RealType<T>> Img<T> createRandomImage( int[] sz, T t){
+	      ArrayImgFactory<T> factory = new ArrayImgFactory<T>();
+	      Img<T> out = factory.create( sz, t);
+	      
+	      Cursor<T> c = out.localizingCursor();
+	      while(c.hasNext()){
+	         T val = c.next();
+	         val.setReal( Math.random() );
+	      }
+	      
+	      return out;
+	   }
    
    public static < T extends RealType< T >> Img<T> threshold(Img<T> img, double thresh, boolean greaterThan){
       
