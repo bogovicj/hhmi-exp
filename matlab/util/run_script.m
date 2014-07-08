@@ -1,4 +1,4 @@
-function run_script(script_name, summary)
+function run_script(script_name, summary, exit_on_completion )
 %RUN_SCRIPT   runs script with automated numbering and logging
 %   RUN_SCRIPT(SCRIPT_NAME, SUMMARY) creates a new directory
 %   under the EXPPATH directory with the next experiment number.
@@ -7,7 +7,11 @@ function run_script(script_name, summary)
 %   and the matlab command output is logged to file.
 %   The string SUMMARY is echoed to the prompt and captured by
 %   the log file.
-  
+ 
+  if( ~exist('exit_on_completion','var') || isempty( exit_on_completion))
+      exit_on_completion = 0;
+  end
+
   full_name = which(script_name);
   assert(~isempty(full_name), 'JANLIB:AssertionFailed', ...
          sprintf('could not find script %s', script_name));
@@ -39,6 +43,10 @@ function run_script(script_name, summary)
   eval(script_name);
   
   diary off
+
+  if( exit_on_completion )
+     exit;
+  end
                  
 end
 
