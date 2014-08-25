@@ -5,9 +5,27 @@ function T = cubeSymmetry( i )
 % m in [ 0  1 ]
 % l in [ 0 11 ]
 % 
-% 
 % See:
 % http://math.stackexchange.com/questions/78573/what-is-a-natural-way-to-enumerate-the-symmetries-of-a-cube 
+%
+% John Bogovic
+% August 2014
+
+if( ~exist('i','var') || isempty( i ))
+    Tlist = cell(60,1); 
+    n = 1;
+    for i = 0:1
+        for j = 0:1
+            for k =0:11
+                v = 32*i + 16*j + k;
+                Tlist{n} = cubeSymmetry( v );
+                n = n + 1;
+            end
+        end
+    end
+    T = Tlist( ~cellfun( 'isempty', Tlist ));
+    return;
+end
 
 % initialize with the identity
 T = eye( 3 );
