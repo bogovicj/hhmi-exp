@@ -17,8 +17,13 @@ docell = 0;
 if ( iscell( shift ))
     docell = 1;        
     shiftList = shift;
+    N = length( shiftList );
+elseif( min( size( shift )) > 1)
+    shiftList = shift;
+    N = size( shiftList, 1 );
 else
     shiftList = { shift };
+    N = 1;
 end
 
 if( ~exist('sz', 'var') || isempty( sz ))
@@ -30,10 +35,19 @@ if( ~exist('sz', 'var') || isempty( sz ))
     sz = subsz + 2*maxshift;
 end
 
-for n = 1:length(shiftList) 
+if( docell )
+    i = {};
+%else
+%    i = zeros( N, prod(sz) ); 
+end
 
-    thisshift = vecToRowCol( shiftList{n}, 'col' );
+for n = 1:N
 
+    if( docell )
+        thisshift = vecToRowCol( shiftList{n}, 'col' );
+    else
+        thisshift = shiftList(n,:);
+    end
 
     half    = (sz - 1) / 2;
     subhalf = (subsz - 1) / 2;
@@ -42,8 +56,10 @@ for n = 1:length(shiftList)
     j = reshape( 1:num, sz );
     itmp = circshift( j, thisshift );
 
-    if( docell )
-        i{n} = itmp
+    if( N > 1 )
+        i{n} = itmp;
+    %elseif( N > 1 )
+    %    i(n,:) = itmp(:);
     else
         i = itmp;
     end
