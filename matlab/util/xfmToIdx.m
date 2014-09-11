@@ -1,4 +1,4 @@
-function idxOut = xfmToIdx( T, sz, rsout )
+function i = xfmToIdx( T, sz, rsout )
 % i = xfmToIdx( T, sz, rsout )
 %
 % Generates index lookups for a patch of size 'sz'
@@ -26,45 +26,51 @@ end
 
 [ xyz{:} ] = ndgrid ( args{:} );
 
-% [ xyz ] = ndgrid ( -half(1) : half(1), ...
-%                    -half(2) : half(2), ...
-%                    -half(3) : half(3));
 
 docell = 0;
 if( iscell(T))
     thisT = T;
     docell = 1;
-    idxOut = {};
+    i = {};
 else
     thisT = { T };
 end
 
 npts = numel( xyz{1} );
 pts = zeros( ndim, npts );
-for i = 1:ndim
-   pts( i, : ) = reshape( xyz{i}, 1, [] ); 
+for j = 1:ndim
+   pts( j, : ) = reshape( xyz{j}, 1, [] ); 
 end
 
 for n = 1:length( thisT )
 
-    ptXfm = thisT{n} * pts ; 
-    ptXfm = ptXfm + repmat( half', 1, size(ptXfm,2)) + 1;
+    % the output size may be different after
+    % accountoing for permutation of the dimensions
+    szxfm = abs(thisT{n} * sz');
+    halfxfm = (szxfm - 1) / 2;
+%     perm = abs( thisT{n} * [1:length(sz)]' );
+    
+    
+    ptXfm = thisT{n} * pts; 
+    ptXfm = ptXfm + repmat( halfxfm, 1, size(ptXfm,2)) + 1;
 
-    args = cell( ndim, 1);
-    for m = 1:ndim;
+    
+    args = {};
+    for m = 1:size(ptXfm,1)
         args{m} = ptXfm(m,:);
     end
+    %args = args( perm) ;
 
     if( rsout )
-        itmp = reshape( sub2ind( sz, args{:}), sz );
+        itmp = reshape( sub2ind( szxfm', args{:}), szxfm' );
     else
-        itmp = sub2ind( sz, args{:} )';
+        itmp = sub2ind( szxfm', args{:} )';
     end
 
 
     if( docell )
-        idxOut{n} = itmp;
+        i{n} = itmp;
     else
-        idxOut = itmp;
+        i = itmp;
     end
 end
