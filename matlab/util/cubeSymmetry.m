@@ -5,6 +5,13 @@ function T = cubeSymmetry( i )
 % m in [ 0  1 ]
 % l in [ 0 11 ]
 % 
+% Convenience calls:
+%   Tlist = cubeSymmetry();
+%       returns a cell array containing all 48 transformation matrices
+%
+%   i = cubeSymmetry( -1 );
+%       returns a vector of valid integer inputs for cubeSymmetry
+% 
 % See:
 % http://math.stackexchange.com/questions/78573/what-is-a-natural-way-to-enumerate-the-symmetries-of-a-cube 
 %
@@ -24,6 +31,14 @@ if( ~exist('i','var') || isempty( i ))
         end
     end
     T = Tlist( ~cellfun( 'isempty', Tlist ));
+    return;
+end
+
+% special case - return valid integer inputs
+if( i < 0 )
+    [n,m,l] = meshgrid( 0:1, 0:1, 0:11 );
+    T = 32.*n + 16.*m + l;
+    T = sort(reshape( T, 1, [] ));
     return;
 end
 
