@@ -3,7 +3,7 @@ function im_ds = downSampleGaussian( im, factor, sourceSigma, targetSigma )
 % See http://fiji.sc/wiki/index.php/Downsample
 %
 % Usage:
-%   im_ds = downSampleGaussian( im, newSize, sourceSigma, targetSigma )
+%   im_ds = downSampleGaussian( im, factor, sourceSigma, targetSigma )
 %
 % newSize - a scalar specifying the downsampling factor.
 %
