@@ -107,15 +107,18 @@ public class TpsBeeExample {
 		};
 		
 		
-		String dstImgFn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1-tpsXfmLEGS-REV.tif";
+		String dstImgFn = "/groups/saalfeld/home/bogovicj/learning/advanced-imglib2/images/bee-1-tpsXfmLEGS-REV2.tif";
+//		String dstImgFn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1-tpsXfmLEGS-REV.tif";
 //		String dstXfmFn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1-tpsXfm.txt";
+		
 		testTpsBee( srcPts, tgtPts, dstImgFn );
 
 	}
 	
 	public static void testTpsBee(float[][] srcPts, float[][] tgtPts, String dstImgFn ){
 		
-		String srcImgFn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1.tif";
+//		String srcImgFn = "/Users/bogovicj/Documents/learning/advanced-imglib2/images/bee-1.tif";
+		String srcImgFn = "/groups/saalfeld/home/bogovicj/learning/advanced-imglib2/images/bee-1.tif";
 		
 		ImagePlus srcImg = IJ.openImage(srcImgFn);
 		ImageProcessor srcIp = srcImg.getProcessor();
@@ -148,7 +151,9 @@ public class TpsBeeExample {
 		ImageProcessor dstIp = new ByteProcessor( nx, ny );
 		ThinPlateSplineMapping.mapInterval(tps, srcIp, dstIp);
 		
-		ImagePlus dstImg = new ImagePlus(srcImg.getTitle()+"_tps", dstIp);
+		ImagePlus dstImg = new ImagePlus(srcImgFn.replaceFirst(".tif", "_tps2.tif"), dstIp);
+		
+		System.out.println( "dstImg: " + dstImg );
 		
 		IJ.save(dstImg, dstImgFn);
 		
