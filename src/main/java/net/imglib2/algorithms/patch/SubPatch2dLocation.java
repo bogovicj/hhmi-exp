@@ -5,11 +5,13 @@ public class SubPatch2dLocation implements Comparable<SubPatch2dLocation> {
 	public final int dim;
 	public final int xyz;
 	
+	public final int idx;
 	public final double val;
 	
-	public SubPatch2dLocation( int dim, int xyz, double val ){
+	public SubPatch2dLocation( int dim, int xyz, int idx, double val ){
 		this.dim = dim;
 		this.xyz = xyz;
+		this.idx = idx;
 		this.val = val;
 	}
 
@@ -47,7 +49,11 @@ public class SubPatch2dLocation implements Comparable<SubPatch2dLocation> {
 	}
 	
 	public SubPatch2dLocation copy(){
-		return new SubPatch2dLocation( dim, xyz, val );
+		return new SubPatch2dLocation( dim, xyz, idx, val );
+	}
+	
+	public String toString(){
+		return String.format("SPL dim(%d) xyz(%d) idx(%d) val(%f)", this.dim, this.xyz, this.idx, this.val );
 	}
 	
 	

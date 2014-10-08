@@ -13,6 +13,9 @@ public class SortedTreeNode<T extends Comparable<T>> implements Comparable<Sorte
 	private SortedTreeNode<T> 			parent;
 	private SortedSet<SortedTreeNode<T>> children;
 	
+	private int depth; // the depth this node in the tree
+					   // root has depth 0 
+	
 	/**
 	 * Constructor
 	 * @param data
@@ -22,6 +25,11 @@ public class SortedTreeNode<T extends Comparable<T>> implements Comparable<Sorte
 		this.data = data;
 		this.parent = parent;
 		children = new TreeSet<SortedTreeNode<T>>();
+		if( isRoot() ){
+			depth = 0;
+		}else{
+			depth = parent.depth + 1;
+		}
 	}
 	
 	/**
@@ -46,6 +54,9 @@ public class SortedTreeNode<T extends Comparable<T>> implements Comparable<Sorte
 	
 	public T getData(){
 		return data;
+	}
+	public int getDepth(){
+		return depth;
 	}
 	
 	public void setData( T data){
@@ -81,6 +92,25 @@ public class SortedTreeNode<T extends Comparable<T>> implements Comparable<Sorte
 	 */
 	public boolean isLeaf(){
 		return children.isEmpty();
+	}
+	
+	public void printAsTree( ){
+		String pad = "";
+		printAsTree( pad );
+	}
+	
+	public void printAsTree( String pad ){
+		
+		System.out.println( pad + this );
+		
+		if( !isLeaf()){
+			String nextPad = pad+"\t";
+			Iterator<SortedTreeNode<T>> it = getChildren().iterator();
+			while( it.hasNext() ){
+				it.next().printAsTree(nextPad);
+			}
+		}
+		
 	}
 	
 	public String toString(){
