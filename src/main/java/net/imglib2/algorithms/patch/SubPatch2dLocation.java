@@ -19,7 +19,8 @@ public class SubPatch2dLocation implements Comparable<SubPatch2dLocation> {
 	/**
 	 * Returns zero if and only if 
 	 * this.val == o.val &&
-	 * this.dim == o.dim && 
+	 * this.dim == o.dim &&
+	 * this.idx == o.idx && 
 	 * this.xyz == o.xyz
 	 * 
 	 *    
@@ -27,12 +28,27 @@ public class SubPatch2dLocation implements Comparable<SubPatch2dLocation> {
 	@Override
 	public int compareTo(SubPatch2dLocation o) {
 		
+		// sort by 
 		if( val > o.val ){
 			return  1;
 		}else if(val < o.val ){
 			return -1;
 		}
+
 		
+		if ( dim != o.dim ||
+			 xyz != o.xyz ||
+			 idx != o.idx )
+		{
+			if( Math.random() > 0.5 ){
+				return 1;
+			}else{
+				return -1;
+			}
+		}
+		
+		
+		/*
 		if( dim > o.dim ){
 			return  1;
 		}else if( dim < o.dim ){
@@ -44,6 +60,7 @@ public class SubPatch2dLocation implements Comparable<SubPatch2dLocation> {
 		}else if( xyz < o.xyz ){
 			return -1;
 		}
+		*/
 		
 		return 0;
 	}

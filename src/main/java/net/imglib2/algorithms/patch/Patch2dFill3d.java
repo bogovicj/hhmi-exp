@@ -34,14 +34,23 @@ public class Patch2dFill3d< T extends Comparable<T> > {
 		addFromNode( parent, newPatches, true );
 	}
 	
+	public TreeSet<SortedTreeNode<T>> getSet(){
+		return set;
+	}
+	public int setSize(){
+		return set.size();
+	}
+	
 	public void addFromNode( SortedTreeNode<T> parent, List<T> newPatches, boolean removeParents ){
 		Iterator<T> it = newPatches.iterator();
 		
+//		System.out.println(" set size: " + set.size());
 		while( it.hasNext() ){
 			T nextData = it.next();
 			SortedTreeNode<T> child = new SortedTreeNode<T>( nextData, parent );
 			parent.addChild(child);
 			set.add( child );
+//			System.out.println(" added child: " + child + " set size: " + set.size());
 		}
 		
 		if( removeParents )
@@ -80,6 +89,16 @@ public class Patch2dFill3d< T extends Comparable<T> > {
 		logger.info("\nnext Best: " + nextBest );
 		logger.info("next Best Parent: " + nextBest.getParent() );
 		logger.info("next Best Parent^2: " + nextBest.getParent().getParent() );
+		
+		SortedTreeNode<SubPatch2dLocation> stn1 = new SortedTreeNode<SubPatch2dLocation>( layer1.get(0) );
+		SortedTreeNode<SubPatch2dLocation> stn2 = new SortedTreeNode<SubPatch2dLocation>( layer2.get(0) );
+		
+		TreeSet<SortedTreeNode<SubPatch2dLocation>> set = new TreeSet<SortedTreeNode<SubPatch2dLocation>>();
+		set.add(stn1);
+		logger.info("set size : " + set.size() );
+		set.add(stn2);
+		logger.info("set size : " + set.size() );
+		
 		
 		logger.info("Finish");
 	}
