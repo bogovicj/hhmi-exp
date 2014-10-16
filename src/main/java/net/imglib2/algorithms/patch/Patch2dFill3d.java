@@ -15,6 +15,11 @@ public class Patch2dFill3d< T extends Comparable<T> > {
 	
 	private TreeSet<SortedTreeNode<T>> set;
 	private SortedTreeNode<T> root;
+
+	public Patch2dFill3d( SortedTreeNode<T> root ){
+		set = new TreeSet<SortedTreeNode<T>>();
+		set.add( root );
+	}
 	
 	public Patch2dFill3d( T rootDat ){
 		root = new SortedTreeNode<T>(rootDat );
