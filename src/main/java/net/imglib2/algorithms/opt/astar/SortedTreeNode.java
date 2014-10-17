@@ -24,12 +24,16 @@ public class SortedTreeNode<T extends Comparable<T>> implements Comparable<Sorte
 	public SortedTreeNode(T data, SortedTreeNode<T> parent ){
 		this.data = data;
 		this.parent = parent;
+		
 		children = new TreeSet<SortedTreeNode<T>>();
-		if( isRoot() ){
+		
+		if( parent != null )
+			parent.addChild( this );
+		
+		if( isRoot() )
 			depth = 0;
-		}else{
+		else
 			depth = parent.depth + 1;
-		}
 	}
 	
 	/**

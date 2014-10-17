@@ -16,8 +16,13 @@ public class Patch2dFill3d< T extends Comparable<T> > {
 	private TreeSet<SortedTreeNode<T>> set;
 	private SortedTreeNode<T> root;
 	
+	public Patch2dFill3d( SortedTreeNode<T> root ){
+		set = new TreeSet<SortedTreeNode<T>>();
+		set.add( root );
+	}
+	
 	public Patch2dFill3d( T rootDat ){
-		root = new SortedTreeNode<T>(rootDat );
+		root = new SortedTreeNode<T>( rootDat );
 		set = new TreeSet<SortedTreeNode<T>>();
 		set.add( root );
 	}
@@ -35,22 +40,23 @@ public class Patch2dFill3d< T extends Comparable<T> > {
 	}
 	
 	public TreeSet<SortedTreeNode<T>> getSet(){
-		return set;
+		return set;	
 	}
+	
 	public int setSize(){
 		return set.size();
 	}
 	
-	public void addFromNode( SortedTreeNode<T> parent, List<T> newPatches, boolean removeParents ){
+	public void addFromNode( SortedTreeNode<T> parent, List<T> newPatches, 
+							 boolean removeParents )
+	{
 		Iterator<T> it = newPatches.iterator();
 		
-//		System.out.println(" set size: " + set.size());
 		while( it.hasNext() ){
 			T nextData = it.next();
 			SortedTreeNode<T> child = new SortedTreeNode<T>( nextData, parent );
 			parent.addChild(child);
 			set.add( child );
-//			System.out.println(" added child: " + child + " set size: " + set.size());
 		}
 		
 		if( removeParents )
