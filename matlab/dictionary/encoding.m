@@ -1,5 +1,5 @@
 function feat = encoding( X, D, encoding_type, do_rev_pol, param )
-% feat = encoding( X, D, type, param )
+% feat = encoding( X, D, encoding_type, do_rev_pol, param )
 %
 % In:
 %   X - matrix( M x N )
@@ -13,8 +13,9 @@ function feat = encoding( X, D, encoding_type, do_rev_pol, param )
 % F - size of dictionary
 %
 % encoding_type 
-%   'sc' - sparse coding
-%   'st' - soft thresholding
+%   'sc'   - sparse coding
+%   'st'   - soft thresholding
+%   'best' - best
 
 % alpha = D'*X; % F x N
 
@@ -35,6 +36,15 @@ switch encoding_type
         feat =  D'*X;
         fmn = mean(abs(feat),1);
         tmp =  bsxfun( @lt, feat, fmn) & bsxfun( @gt, feat, -fmn);
+        feat(tmp) = 0;
+
+    case 'best'
+        feat =  D'*X;
+        [~, fmi] = max( feat, [], 1);
+        tmp = true( size( feat ));
+        for i = 1:size(feat,2)
+            tmp(fmi(i),i) = false;
+        end
         feat(tmp) = 0;
         
     otherwise 

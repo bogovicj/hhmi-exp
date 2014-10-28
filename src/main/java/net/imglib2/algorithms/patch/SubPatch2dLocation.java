@@ -1,7 +1,13 @@
 package net.imglib2.algorithms.patch;
 
-public class SubPatch2dLocation implements Comparable<SubPatch2dLocation> {
+import java.io.Serializable;
 
+public class SubPatch2dLocation implements Comparable<SubPatch2dLocation>, Serializable {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 271503445605322074L;
 	public final int dim;
 	public final int xyz;
 	
