@@ -1,14 +1,14 @@
 package net.imglib2.algorithms.opt.astar;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.io.Serializable;
+import java.util.*;
 
 
-public class SortedTreeNode<T extends Comparable<T>> implements Comparable<SortedTreeNode<T>> {
+public class SortedTreeNode<T extends Comparable<T>> implements Comparable<SortedTreeNode<T>>,  Serializable{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -6683027733135726639L;
 	private T							data;
 	private SortedTreeNode<T> 			parent;
 	private SortedSet<SortedTreeNode<T>> children;
@@ -54,6 +54,14 @@ public class SortedTreeNode<T extends Comparable<T>> implements Comparable<Sorte
 		while (it.hasNext()){
 			addChild( it.next() );
 		}
+	}
+	
+	public boolean removeChild( SortedTreeNode<T> child ){
+		return children.remove( child );
+	}
+	
+	public boolean removeChildren( Collection<SortedTreeNode<T>> children ){
+		return children.removeAll( children );
 	}
 	
 	public T getData(){
@@ -117,6 +125,22 @@ public class SortedTreeNode<T extends Comparable<T>> implements Comparable<Sorte
 		
 	}
 	
+	public LinkedList<SortedTreeNode<T>> pathToRoot(){
+		LinkedList<SortedTreeNode<T>> path = new LinkedList<SortedTreeNode<T>>( );
+		
+		SortedTreeNode<T> obj = this;
+		path.addFirst( obj );
+		
+		while( !obj.isRoot() ){
+			obj = obj.getParent();
+			path.addFirst( obj );
+		}
+		
+		return path;
+	}
+	
+
+	
 	public String toString(){
 		String out = "STN (" + data + ") " ;
 		
@@ -130,6 +154,19 @@ public class SortedTreeNode<T extends Comparable<T>> implements Comparable<Sorte
 			out += "LEAF ";
 		}else{
 			out += "[" + children.size() + " children]";
+		}
+		
+		return out;
+	}
+	
+	public static <T extends Comparable<T>> String pathToString( Collection<SortedTreeNode<T>> path, String pad ){
+		String out = "";
+		Iterator<SortedTreeNode<T>> it = path.iterator();
+
+		String prefix = "";
+		while( it.hasNext() ){
+			out = out + prefix + it.next() + "\n";
+			prefix = prefix + pad;
 		}
 		
 		return out;
