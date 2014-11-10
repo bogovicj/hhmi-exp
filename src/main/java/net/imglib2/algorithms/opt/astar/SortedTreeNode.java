@@ -64,6 +64,20 @@ public class SortedTreeNode<T extends Comparable<T>> implements Comparable<Sorte
 		return children.removeAll( children );
 	}
 	
+	public int numDescendants(){
+		if( isLeaf() ){
+			return 0;
+		}else{
+			int N = 0;
+			Iterator<SortedTreeNode<T>> it = getChildren().iterator();
+			while( it.hasNext() ){
+				N += it.next().numDescendants();
+			}
+			return N;
+		}
+	}
+	
+	
 	public T getData(){
 		return data;
 	}
