@@ -13,6 +13,14 @@ if( ~exist('coords','var') || isempty(coords))
         y = randi( samplerng(2,:), numPatches, 1);
         z = randi( samplerng(3,:), numPatches, 1);
     else
+        mask( 1:pRad(1)+1, :, :) = 0;
+        mask( :, 1:pRad(2)+1, :) = 0;
+        mask( :, :, 1:pRad(3)+1) = 0;
+        
+        mask( end-pRad(1):end, :, :) = 0;
+        mask( :, end-pRad(2):end, :) = 0;
+        mask( :, :, end-pRad(3):end) = 0;
+        
         j = find( mask );
         [x,y,z] = ind2sub( size(mask), j(randi(length(j), numPatches, 1)));
     end
