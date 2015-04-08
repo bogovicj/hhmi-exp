@@ -14,6 +14,11 @@ public class Patch2dFill3d< T extends Comparable<T> > implements Serializable {
 	private static final long serialVersionUID = -8070045732443654896L;
 	private TreeSet<SortedTreeNode<T>> set;
 	private SortedTreeNode<T> root;
+
+	public Patch2dFill3d( SortedTreeNode<T> root ){
+		set = new TreeSet<SortedTreeNode<T>>();
+		set.add( root );
+	}
 	
 	public Patch2dFill3d( SortedTreeNode<T> root ){
 //		System.out.println("initializing with node");
