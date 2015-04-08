@@ -1,12 +1,12 @@
 function [patches, coords] = grabPatchesSimple( im, patchSize, numPatches, coords, mask )
 % Usage:
 %   [patches, coords] = grabPatchesSimple( im, patchSize, numPatches, coords, mask );
-length( patchSize)
+
 if( length( patchSize) == 2 )
     patchSize = [ patchSize 1 ];
 end
 pNumel = prod( patchSize );
-pRad = (patchSize - 1)./2
+pRad = (patchSize - 1)./2;
 
 sz = size( im );
 
