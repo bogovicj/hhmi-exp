@@ -1,5 +1,6 @@
 package net.imglib2.algorithms.matrix.iterator;
 
+import java.io.Serializable;
 import java.util.Iterator;
 
 /**
@@ -7,9 +8,10 @@ import java.util.Iterator;
  * @author John Bogovic <bogovicj@janelia.hhmi.org>
  * 
  */
-public class LowerTriangularMatrixIterator implements Iterator< Long >
+public class LowerTriangularMatrixIterator implements Iterator< Long >, Serializable
 {
 
+	private static final long serialVersionUID = 7587538495810169784L;
 	protected long nrows; // width and height of matrix
 	protected long numElements;
 
